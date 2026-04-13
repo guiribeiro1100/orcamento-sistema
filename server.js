@@ -196,54 +196,69 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.end();
 });
-app.get('/pdf/:id', (req, res) => {
+aapp.get('/pdf/:id', (req, res) => {
     const item = orcamentos.find(o => o.id == req.params.id);
 
     if (!item) {
         return res.send('Orçamento não encontrado');
     }
 
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename=orcamento.pdf');
 
     doc.pipe(res);
 
-    // 🔥 LOGO (coloque um arquivo logo.png na pasta do projeto)
-    doc.image('logo.png', 50, 30, { width: 120 });
+    // 🔷 LOGO (se não tiver, comenta essa linha)
+    try {
+        doc.image('logo.png', 50, 30, { width: 100 });
+    } catch (e) {}
 
-    doc.moveDown(5);
+    // 🔷 TÍTULO
+    doc.fontSize(22)
+       .fillColor('#2563eb')
+       .text('ORÇAMENTO', { align: 'center' });
 
-    // TÍTULO
-    doc.fontSize(20).text('ORÇAMENTO PROFISSIONAL', { align: 'center' });
+    doc.moveDown(2);
 
-    doc.moveDown();
-
-    // DADOS CLIENTE
-    doc.fontSize(12).text(`Status: ${item.status}`);
+    // 📌 INFORMAÇÕES
+    doc.fillColor('black').fontSize(12);
+    doc.text(`Status: ${item.status}`);
     doc.text(`Data: ${new Date(item.id).toLocaleString()}`);
-
-    doc.moveDown();
-
-    // MARCA REFERÊNCIA
     doc.text(`Marca / Referência: ${item.marca_referencia || '-'}`);
 
+    doc.moveDown(2);
+
+    // 🔪 FACAS (CAIXA)
+    doc.rect(50, doc.y, 500, 20).fill('#e5e7eb');
+    doc.fillColor('black').text('FACAS', 55, doc.y - 18);
+
     doc.moveDown();
 
-    // FACAS
-    doc.text('🔪 FACAS');
     doc.text(`Largura: ${item.facas_largura || '-'}`);
     doc.text(`Altura: ${item.facas_altura || '-'}`);
     doc.text(`Espessura: ${item.facas_espessura || '-'}`);
 
+    doc.moveDown(2);
+
+    // 💬 RESPOSTA (CAIXA)
+    doc.rect(50, doc.y, 500, 20).fill('#e5e7eb');
+    doc.fillColor('black').text('RESPOSTA DO ORÇAMENTO', 55, doc.y - 18);
+
     doc.moveDown();
 
-    // RESPOSTA (🔥 O QUE VOCÊ PEDIU)
-    doc.text('💬 RESPOSTA DO ORÇAMENTO:');
-    doc.text(item.resposta || 'Ainda não respondido');
+    doc.fontSize(12).text(item.resposta || 'Ainda não respondido');
+
+    doc.moveDown(3);
+
+    // 🔻 RODAPÉ
+    doc.fontSize(10)
+       .fillColor('gray')
+       .text('Documento gerado automaticamente', { align: 'center' });
 
     doc.end();
+});
 });
 
 // =========================
