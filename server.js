@@ -74,7 +74,18 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         material: b.material || '',
         diametro: b.diametro || '',
         espessura: b.espessura || '',
+    
+console.log(req.body); // 👈 adiciona isso
 
+    orcamentos.push({
+        ...req.body,
+        id: Date.now(),
+        status: 'novo',
+        historico: []
+    });
+
+    res.send({ ok: true });
+});
 
 
 
