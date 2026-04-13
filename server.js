@@ -230,17 +230,21 @@ app.get('/pdf/:id', (req, res) => {
 
     doc.moveDown(2);
 
-    // 🔪 FACAS (CAIXA)
-    doc.rect(50, doc.y, 500, 20).fill('#e5e7eb');
-    doc.fillColor('black').text('FACAS', 55, doc.y - 18);
+    // 🔪 FACAS
+doc.moveDown();
 
-    doc.moveDown();
+doc.fontSize(14)
+   .fillColor('#2563eb')
+   .text('FACAS');
 
-    doc.text(`Largura: ${item.facas_largura || '-'}`);
-    doc.text(`Altura: ${item.facas_altura || '-'}`);
-    doc.text(`Espessura: ${item.facas_espessura || '-'}`);
+doc.moveDown(0.5);
 
-    doc.moveDown(2);
+doc.fontSize(12).fillColor('black');
+doc.text(`Largura: ${item.facas_largura || '-'}`);
+doc.text(`Altura: ${item.facas_altura || '-'}`);
+doc.text(`Espessura: ${item.facas_espessura || '-'}`);
+
+doc.moveDown(2);
 
     // 💬 RESPOSTA (CAIXA)
     doc.rect(50, doc.y, 500, 20).fill('#e5e7eb');
