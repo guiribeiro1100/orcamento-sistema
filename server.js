@@ -251,8 +251,29 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     // RODAPÉ
     doc.fontSize(10).fillColor('gray')
         .text('Documento gerado automaticamente', { align: 'center' });
+// 📸 IMAGEM ANEXADA
+if (item.foto) {
+    doc.addPage();
 
-    doc.end();
+    doc.fontSize(16).text('IMAGEM ANEXADA', { align: 'center' });
+    doc.moveDown();
+
+    try {
+        doc.image(path.join(__dirname, item.foto), {
+            fit: [500, 400],
+            align: 'center',
+            valign: 'center'
+        });
+    } catch (err) {
+        doc.text('Erro ao carregar imagem');
+    }
+}
+    
+
+
+
+
+doc.end();
 });
 
 // =========================
