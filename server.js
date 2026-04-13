@@ -196,7 +196,7 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.end();
 });
-aapp.get('/pdf/:id', (req, res) => {
+app.get('/pdf/:id', (req, res) => {
     const item = orcamentos.find(o => o.id == req.params.id);
 
     if (!item) {
