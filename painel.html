@@ -1,240 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Painel Orçamentos</title>
+<title>Painel</title>
 
 <style>
 body {
-    margin:0;
-    font-family:Arial;
-    background:linear-gradient(135deg,#0b1220,#0f172a);
-    color:white;
-}
-
-.topbar {
-    padding:20px;
-    position:sticky;
-    top:0;
-    background:rgba(17,24,39,0.85);
-    backdrop-filter: blur(10px);
-}
-
-input, select {
-    width:100%;
-    margin-top:10px;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:#1f2937;
-    color:white;
-}
-
-.container {
-    padding:15px;
-    max-width:1000px;
-    margin:auto;
+    font-family: Arial;
+    background: #f3f4f6;
+    padding: 20px;
 }
 
 .card {
-    background:rgba(31,41,55,0.7);
-    backdrop-filter: blur(10px);
-    border-radius:16px;
-    padding:18px;
-    margin:12px 0;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
 }
 
-img {
-    width:140px;
-    border-radius:10px;
-    margin-top:10px;
-}
-
-textarea {
-    width:100%;
-    margin-top:10px;
-    padding:10px;
-    border:none;
-    border-radius:10px;
-    background:#0b1220;
-    color:white;
+h3 {
+    margin: 0 0 10px;
 }
 
 button {
-    width:100%;
-    margin-top:10px;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:linear-gradient(90deg,#22c55e,#16a34a);
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
+    margin-top: 10px;
+    padding: 8px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
 }
 
-.status {
-    display:inline-block;
-    padding:5px 12px;
-    border-radius:20px;
-    font-size:12px;
-    background:#374151;
+textarea {
+    width: 100%;
+    margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="topbar">
-<h2>📊 Painel de Orçamentos</h2>
+<h2>Painel de Orçamentos</h2>
 
-<input id="busca" placeholder="🔍 Buscar cliente, empresa ou vendedor">
-
-<select id="filtro">
-    <option value="todos">Todos</option>
-    <option value="novo">Novos</option>
-    <option value="respondido">Respondidos</option>
-</select>
-</div>
-
-<div class="container" id="lista"></div>
+<div id="lista"></div>
 
 <script>
-
-let dados = [];
-
-async function load() {
+async function carregar() {
     const res = await fetch('/orcamentos');
-    dados = await res.json();
-    render();
-}
-
-function render() {
-
-    const busca = document.getElementById('busca').value.toLowerCase();
-    const filtro = document.getElementById('filtro').value;
+    const dados = await res.json();
 
     const lista = document.getElementById('lista');
     lista.innerHTML = '';
 
-    dados
-    .filter(o => {
+    dados.reverse().forEach(item => {
 
-        const texto =
-            (o.cliente_cargo || '') + ' ' +
-            (o.empresa_local || '') + ' ' +
-            (o.vendedor || '');
+        let detalhes = '';
 
-        const matchBusca = texto.toLowerCase().includes(busca);
-        const matchFiltro = filtro === 'todos' || o.status === filtro;
+        // 🔥 DINÂMICO POR TIPO
+        if (item.tipo_produto === 'disco') {
+            detalhes = `
+                Diâmetro externo: ${item.diametro_externo || '-'} <br>
+                Diâmetro interno: ${item.diametro_interno || '-'} <br>
+                Fio: ${item.tipo_fio || '-'} <br>
+            `;
+        }
 
-        return matchBusca && matchFiltro;
-    })
-    .forEach(o => {
+        if (item.tipo_produto === 'lamina') {
+            detalhes = `
+                Largura: ${item.largura || '-'} <br>
+                Comprimento: ${item.comprimento || '-'} <br>
+                Espessura: ${item.espessura || '-'} <br>
+            `;
+        }
 
-        const div = document.createElement('div');
-        div.className = 'card';
+        if (item.tipo_produto === 'usinagem') {
+            detalhes = `
+                Medidas: ${item.medidas_usinagem || '-'} <br>
+            `;
+        }
 
-        div.innerHTML = `
-            <h3>${o.cliente_cargo || 'Sem nome'}</h3>
+        lista.innerHTML += `
+            <div class="card">
 
-            <div class="status">📌 ${o.status}</div>
+                <h3>${item.cliente_cargo || 'Sem nome'} - ${item.tipo_produto}</h3>
 
-            <p>🏢 ${o.empresa_local || ''}</p>
-            <p>👤 ${o.vendedor || ''}</p>
-            <p>🕒 ${o.data}</p>
+                <p>
+                    <b>Empresa:</b> ${item.empresa_local || '-'} <br>
+                    <b>Telefone:</b> ${item.telefone || '-'} <br>
+                    <b>Aplicação:</b> ${item.aplicacao || '-'} <br>
+                </p>
 
-            <div style="margin-top:10px; font-size:14px; line-height:1.6;">
+                <p>${detalhes}</p>
 
-                <b>📦 Especificações</b><br>
-                🏭 ${o.aplicacao || '-'}<br>
-                🧱 ${o.material || '-'}<br>
-                📏 ${o.diametro || '-'}<br>
-                📐 ${o.espessura || '-'}<br>
-
-                <br>
-               <h3>🔪 Facas</h3>
-
-<p>📏 Largura: ${o.facas_largura || '-'}</p>
-<p>📐 Altura: ${o.facas_altura || '-'}</p>
-<p>📦 Espessura: ${o.facas_espessura || '-'}</p>
-
-
-
-
-
-
-
-
-
-
-                <b>🔩 Furação</b><br>
-                D1: ${o.d1 || '-'}<br>
-                S1: ${o.s1 || '-'}<br>
-                D2: ${o.d2 || '-'}<br>
-                Dmin: ${o.dmin || '-'}<br>
-                S2: ${o.s2 || '-'}<br>
-                C1: ${o.c1 || '-'}<br>
+                ${item.foto ? `<img src="${item.foto}" width="120">` : ''}
 
                 <br>
 
-                <b>🧵 Fio</b><br>
-                ${o.tipo_fio || '-'}<br>
-                DA: ${o.da || '-'}<br>
-                DF: ${o.df || '-'}<br>
+                <textarea id="resposta-${item.id}" placeholder="Responder orçamento"></textarea>
 
-                <br>
+                <button onclick="responder(${item.id})">Responder</button>
 
-                <b>✂️ Corte</b><br>
-                ${o.perfil_corte || '-'}<br>
-                L: ${o.largura || '-'}<br>
-                C: ${o.comprimento || '-'}<br>
+                <br><br>
+
+                <a href="/orcamento/${item.id}/pdf" target="_blank">
+                    📄 Gerar PDF
+                </a>
 
             </div>
-
-            ${o.foto ? `<img src="${o.foto}">` : ''}
-
-            <div style="margin-top:10px;background:#111827;padding:10px;border-radius:10px;">
-                <b>Histórico:</b><br>
-                ${o.historico ? o.historico.map(h => `
-                    🕒 ${h.data}<br>
-                    ${h.resposta}<br><br>
-                `).join('') : 'Sem histórico'}
-            </div>
-
-            <textarea id="r${o.id}" placeholder="Responder..."></textarea>
-
-            <button onclick="resp(${o.id})">Enviar resposta</button>
-
-            <!-- ========================= -->
-            <!-- 📄 BOTÃO PDF (NOVO) -->
-            <!-- ========================= -->
-            <button style="background:linear-gradient(90deg,#3b82f6,#2563eb);"
-            onclick="window.open('/orcamento/' + ${o.id} + '/pdf')">
-            📄 Gerar PDF
-            </button>
         `;
-
-        lista.appendChild(div);
     });
 }
 
-async function resp(id) {
-    const resposta = document.getElementById('r'+id).value;
+async function responder(id) {
+    const texto = document.getElementById('resposta-' + id).value;
 
     await fetch('/responder/' + id, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ resposta })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resposta: texto })
     });
 
-    load();
+    alert('Respondido!');
+    carregar();
 }
 
-document.getElementById('busca').addEventListener('input', render);
-document.getElementById('filtro').addEventListener('change', render);
-
-load();
-
+carregar();
 </script>
 
 </body>
