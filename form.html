@@ -1,59 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <title>Solicitar Orçamento</title>
 
 <style>
 body {
-    margin:0;
-    font-family:Arial;
-    background:#0b1220;
-    color:white;
+    font-family: Arial;
+    background: #f3f4f6;
+    padding: 20px;
 }
 
 .container {
-    max-width:800px;
-    margin:auto;
-    padding:20px;
-}
-
-.section {
-    margin-top:20px;
-    padding:15px;
-    background:#111827;
-    border-radius:12px;
-}
-
-input, select {
-    width:100%;
-    padding:10px;
-    margin-top:8px;
-    border:none;
-    border-radius:8px;
-    background:#1f2937;
-    color:white;
-}
-
-button {
-    width:100%;
-    padding:12px;
-    margin-top:15px;
-    background:#22c55e;
-    border:none;
-    border-radius:8px;
-    color:white;
-    font-weight:bold;
+    max-width: 700px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
 }
 
 h3 {
-    margin-top:0;
+    margin-top: 25px;
+    color: #2563eb;
 }
 
-img {
-    width:100%;
-    border-radius:10px;
-    margin-top:10px;
+input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.hidden {
+    display: none;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
 }
 </style>
 </head>
@@ -62,169 +52,100 @@ img {
 
 <div class="container">
 
-<h1>📦 Solicitar Orçamento</h1>
+<h2>Solicitar Orçamento</h2>
 
-<form id="form" enctype="multipart/form-data">
+<form action="/orcamento" method="POST" enctype="multipart/form-data">
 
-<!-- ========================= -->
-<!-- DADOS CLIENTE (JÁ EXISTIA) -->
-<!-- ========================= -->
+<!-- CLIENTE -->
+<h3>👤 Dados do Cliente</h3>
 
-<div class="section">
-<h3>Dados do Cliente</h3>
+<input type="text" name="empresa_local" placeholder="Empresa">
+<input type="text" name="cliente_cargo" placeholder="Cliente" required>
+<input type="email" name="email" placeholder="Email">
+<input type="text" name="telefone" placeholder="Telefone">
+<input type="text" name="vendedor" placeholder="Vendedor">
 
-<input name="cliente_cargo" placeholder="Cliente - Cargo">
-<input name="empresa_local" placeholder="Empresa - Cidade - Estado">
-<input name="email" placeholder="Email">
-<input name="telefone" placeholder="Telefone">
-<input name="vendedor" placeholder="Vendedor">
-</div>
+<!-- ESPECIFICAÇÃO -->
+<h3>⚙️ Especificação</h3>
 
-<!-- ========================= -->
-<!-- DISCO DE CORTE -->
-<!-- ========================= -->
-
-<div class="section">
-<h3>📦 Especificações do Disco</h3>
-
-<img src="https://static.wixstatic.com/media/4edf18_6af2fc2c4430426cafd150271110234c~mv2.png">
-
-<label>Aplicação - Nome da Máquina</label>
-<input name="aplicacao" placeholder="Ex: Disco desossador de coxa - Toridas Mark Mayekawa">
-
-<label>Material</label>
-<input name="material" placeholder="Ex: Aço inoxidável">
-
-<label>Diâmetro Externo (DE)</label>
-<input name="diametro" placeholder="Ex: 100mm">
-
-<label>Espessura (E)</label>
-<input name="espessura" placeholder="Ex: 2mm">
-</div>
-
-<!-- 🔪 FACAS (NOVO) -->
-<h3>🔪 Facas</h3>
-
-<label>📏 Largura</label>
-<input type="text" name="facas_largura" placeholder="Ex: 50mm">
-
-<label>📐 Altura</label>
-<input type="text" name="facas_altura" placeholder="Ex: 20mm">
-
-<label>📦 Espessura</label>
-<input type="text" name="facas_espessura" placeholder="Ex: 2mm">
-
-
-
-
-
-
-<!-- ========================= -->
-<!-- FURAÇÃO -->
-<!-- ========================= -->
-
-<div class="section">
-<h3>🔩 Furação (2/4)</h3>
-
-<img src="https://static.wixstatic.com/media/4edf18_7a229489cd4e40d689c290abfd8e9b79~mv2.png">
-
-<select name="tipo_furo">
-    <option>Furo circular</option>
-    <option>Furo oblongo</option>
-    <option>Furo sextavado</option>
-    <option>Outros</option>
+<select name="tipo_produto" id="tipo_produto" required>
+    <option value="">Selecione</option>
+    <option value="disco">Disco</option>
+    <option value="lamina">Lâminas</option>
+    <option value="usinagem">Peças de usinagem</option>
 </select>
 
-<label>Diâmetro 1 (D1)</label>
-<input name="d1">
+<!-- DISCO -->
+<div id="disco" class="hidden">
 
-<label>Sextavado 1 (S1)</label>
-<input name="s1">
-
-<label>Diâmetro 2 (D2)</label>
-<input name="d2">
-
-<label>Diâmetro menor (d1)</label>
-<input name="dmin">
-
-<label>Sextavado 2 (S2)</label>
-<input name="s2">
-
-<label>Comprimento 1 (C1)</label>
-<input name="c1">
-</div>
-
-<!-- ========================= -->
-<!-- TIPO DE FIO -->
-<!-- ========================= -->
-
-<div class="section">
-<h3>🧵 Tipo de Fio (3/4)</h3>
+<input type="text" name="diametro_externo" placeholder="Diâmetro externo">
+<input type="text" name="diametro_interno" placeholder="Diâmetro interno">
 
 <select name="tipo_fio">
-    <option>Fio Único</option>
-    <option>Fio Único com chanfro</option>
-    <option>Fio Duplo</option>
+    <option value="">Tipo de fio</option>
+    <option value="fio_unico">Fio único</option>
+    <option value="fio_duplo">Fio duplo</option>
 </select>
 
-<label>Distância de Ângulo (DA)</label>
-<input name="da">
+<input type="text" name="tipo_fio_desc" placeholder="Descrição do fio">
+<textarea name="obs_disco" placeholder="Observação"></textarea>
 
-<label>Distância de Fio (DF)</label>
-<input name="df">
 </div>
 
-<!-- ========================= -->
-<!-- PERFIL DE CORTE -->
-<!-- ========================= -->
+<!-- LAMINA -->
+<div id="lamina" class="hidden">
 
-<div class="section">
-<h3>✂️ Perfil de Corte (4/4)</h3>
+<input type="text" name="largura" placeholder="Largura">
+<input type="text" name="comprimento" placeholder="Comprimento">
+<input type="text" name="espessura" placeholder="Espessura">
+<textarea name="obs_lamina" placeholder="Observação"></textarea>
 
-<img src="https://static.wixstatic.com/media/4edf18_40f672d59a6742d8803e54198a408a0e~mv2.png">
+</div>
 
-<select name="perfil_corte">
-    <option>Fio liso</option>
-    <option>Fio com fendas</option>
-    <option>Fio ondulado</option>
-    <option>Fio serrilhado</option>
+<!-- USINAGEM -->
+<div id="usinagem" class="hidden">
+
+<textarea name="medidas_usinagem" placeholder="Medidas"></textarea>
+
+</div>
+
+<!-- APLICAÇÃO -->
+<h3>🏭 Aplicação</h3>
+
+<select name="aplicacao">
+    <option value="">Selecione</option>
+    <option value="aves">Aves</option>
+    <option value="bovinos">Bovinos</option>
+    <option value="suinos">Suínos</option>
+    <option value="pescados">Pescados</option>
+    <option value="fabricantes">Fabricantes de máquinas</option>
 </select>
 
-<label>Largura (L)</label>
-<input name="largura">
-
-<label>Comprimento (C)</label>
-<input name="comprimento">
-</div>
-
-<!-- ========================= -->
-<!-- UPLOAD -->
-<!-- ========================= -->
-
-<div class="section">
-<h3>📸 Upload de Imagem</h3>
-
+<!-- ANEXO -->
+<h3>📸 Anexo</h3>
 <input type="file" name="foto">
-</div>
 
-<button>Enviar Orçamento</button>
+<button type="submit">Enviar Orçamento</button>
 
 </form>
 
 </div>
 
 <script>
-document.getElementById('form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+const tipo = document.getElementById('tipo_produto');
 
-    const formData = new FormData(e.target);
+const disco = document.getElementById('disco');
+const lamina = document.getElementById('lamina');
+const usinagem = document.getElementById('usinagem');
 
-    await fetch('/orcamento', {
-        method:'POST',
-        body: formData
-    });
+tipo.addEventListener('change', () => {
+    disco.classList.add('hidden');
+    lamina.classList.add('hidden');
+    usinagem.classList.add('hidden');
 
-    alert('Orçamento enviado com sucesso!');
+    if (tipo.value === 'disco') disco.classList.remove('hidden');
+    if (tipo.value === 'lamina') lamina.classList.remove('hidden');
+    if (tipo.value === 'usinagem') usinagem.classList.remove('hidden');
 });
 </script>
 

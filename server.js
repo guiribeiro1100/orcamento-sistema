@@ -51,7 +51,6 @@ function saveDB(data) {
 // =========================
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'form.html')));
-app.get('/form.html', (req, res) => res.sendFile(path.join(__dirname, 'form.html')));
 app.get('/painel.html', (req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
 
 // =========================
@@ -66,40 +65,36 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
     const novo = {
         id: Date.now(),
 
-        cliente_cargo: b.cliente_cargo || '',
+        // CLIENTE
         empresa_local: b.empresa_local || '',
+        cliente_cargo: b.cliente_cargo || '',
         email: b.email || '',
         telefone: b.telefone || '',
         vendedor: b.vendedor || '',
 
-        marca_referencia: b.marca_referencia || '',
+        // TIPO
+        tipo_produto: b.tipo_produto || '',
 
-        aplicacao: b.aplicacao || '',
-        material: b.material || '',
-        diametro: b.diametro || '',
-        espessura: b.espessura || '',
-
-        tipo_furo: b.tipo_furo || '',
-        d1: b.d1 || '',
-        s1: b.s1 || '',
-        d2: b.d2 || '',
-        dmin: b.dmin || '',
-        s2: b.s2 || '',
-        c1: b.c1 || '',
-
+        // DISCO
+        diametro_externo: b.diametro_externo || '',
+        diametro_interno: b.diametro_interno || '',
         tipo_fio: b.tipo_fio || '',
-        da: b.da || '',
-        df: b.df || '',
+        tipo_fio_desc: b.tipo_fio_desc || '',
+        obs_disco: b.obs_disco || '',
 
-        perfil_corte: b.perfil_corte || '',
+        // LAMINA
         largura: b.largura || '',
         comprimento: b.comprimento || '',
+        espessura: b.espessura || '',
+        obs_lamina: b.obs_lamina || '',
 
-        // 🔪 FACAS
-        facas_largura: b.facas_largura || '',
-        facas_altura: b.facas_altura || '',
-        facas_espessura: b.facas_espessura || '',
+        // USINAGEM
+        medidas_usinagem: b.medidas_usinagem || '',
 
+        // APLICAÇÃO
+        aplicacao: b.aplicacao || '',
+
+        // FOTO
         foto: req.file ? '/uploads/' + req.file.filename : null,
 
         status: 'novo',
@@ -145,7 +140,7 @@ app.post('/responder/:id', (req, res) => {
 });
 
 // =========================
-// PDF PROFISSIONAL
+// PDF PROFISSIONAL DINÂMICO
 // =========================
 
 app.get('/orcamento/:id/pdf', (req, res) => {
@@ -162,118 +157,93 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.pipe(res);
 
-    // TÍTULO
+    // ===== TÍTULO =====
     doc.fontSize(20).text('ORÇAMENTO TÉCNICO', { align: 'center' });
     doc.moveDown(2);
 
-    // CLIENTE
+    // ===== CLIENTE =====
     doc.fontSize(14).text('DADOS DO CLIENTE');
-    doc.moveDown(0.5);
-
     doc.fontSize(12);
-    if (item.cliente_cargo) doc.text(`Cliente: ${item.cliente_cargo}`);
-    if (item.empresa_local) doc.text(`Empresa: ${item.empresa_local}`);
-    if (item.email) doc.text(`Email: ${item.email}`);
-    if (item.telefone) doc.text(`Telefone: ${item.telefone}`);
-    if (item.vendedor) doc.text(`Vendedor: ${item.vendedor}`);
+
+    doc.text(`Empresa: ${item.empresa_local}`);
+    doc.text(`Cliente: ${item.cliente_cargo}`);
+    doc.text(`Email: ${item.email}`);
+    doc.text(`Telefone: ${item.telefone}`);
+    doc.text(`Vendedor: ${item.vendedor}`);
 
     doc.moveDown();
 
-    // ESPECIFICAÇÕES
-    doc.fontSize(14).text('ESPECIFICAÇÕES');
-    doc.moveDown(0.5);
-
-    doc.fontSize(12);
-    doc.text(`Aplicação: ${item.aplicacao || '-'}`);
-    doc.text(`Material: ${item.material || '-'}`);
-    doc.text(`Diâmetro: ${item.diametro || '-'}`);
-    doc.text(`Espessura: ${item.espessura || '-'}`);
+    // ===== TIPO =====
+    doc.fontSize(14).text('TIPO DE PRODUTO');
+    doc.fontSize(12).text(item.tipo_produto.toUpperCase());
 
     doc.moveDown();
 
-    // FACAS
-    doc.fontSize(14).text('FACAS');
-    doc.moveDown(0.5);
+    // ===== CONTEÚDO DINÂMICO =====
 
-    doc.fontSize(12);
-    doc.text(`Largura: ${item.facas_largura || '-'}`);
-    doc.text(`Altura: ${item.facas_altura || '-'}`);
-    doc.text(`Espessura: ${item.facas_espessura || '-'}`);
+    if (item.tipo_produto === 'disco') {
 
-    doc.moveDown();
+        doc.fontSize(14).text('DISCO');
+        doc.fontSize(12);
 
-    // FURAÇÃO
-    doc.fontSize(14).text('FURAÇÃO');
-    doc.moveDown(0.5);
-
-    doc.fontSize(12);
-    doc.text(`Tipo: ${item.tipo_furo || '-'}`);
-    doc.text(`D1: ${item.d1 || '-'}`);
-    doc.text(`S1: ${item.s1 || '-'}`);
-    doc.text(`D2: ${item.d2 || '-'}`);
-    doc.text(`Dmin: ${item.dmin || '-'}`);
-    doc.text(`S2: ${item.s2 || '-'}`);
-    doc.text(`C1: ${item.c1 || '-'}`);
-
-    doc.moveDown();
-
-    // FIO
-    doc.fontSize(14).text('FIO');
-    doc.moveDown(0.5);
-
-    doc.fontSize(12);
-    doc.text(`${item.tipo_fio || '-'}`);
-    doc.text(`DA: ${item.da || '-'}`);
-    doc.text(`DF: ${item.df || '-'}`);
-
-    doc.moveDown();
-
-    // CORTE
-    doc.fontSize(14).text('CORTE');
-    doc.moveDown(0.5);
-
-    doc.fontSize(12);
-    doc.text(`${item.perfil_corte || '-'}`);
-    doc.text(`L: ${item.largura || '-'}`);
-    doc.text(`C: ${item.comprimento || '-'}`);
-
-    doc.moveDown();
-
-    // RESPOSTA
-    const ultimaResposta = item.historico?.slice(-1)[0]?.resposta || 'Sem resposta';
-    doc.fontSize(14).text('RESPOSTA');
-    doc.moveDown(0.5);
-
-    doc.fontSize(12).text(ultimaResposta);
-
-    doc.moveDown(2);
-
-    // RODAPÉ
-    doc.fontSize(10).fillColor('gray')
-        .text('Documento gerado automaticamente', { align: 'center' });
-// 📸 IMAGEM ANEXADA
-if (item.foto) {
-    doc.addPage();
-
-    doc.fontSize(16).text('IMAGEM ANEXADA', { align: 'center' });
-    doc.moveDown();
-
-    try {
-        doc.image(path.join(__dirname, item.foto), {
-            fit: [500, 400],
-            align: 'center',
-            valign: 'center'
-        });
-    } catch (err) {
-        doc.text('Erro ao carregar imagem');
+        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
+        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
+        doc.text(`Tipo de fio: ${item.tipo_fio}`);
+        doc.text(`Descrição do fio: ${item.tipo_fio_desc}`);
+        doc.text(`Observação: ${item.obs_disco}`);
     }
-}
-    
 
+    if (item.tipo_produto === 'lamina') {
 
+        doc.fontSize(14).text('LÂMINA');
+        doc.fontSize(12);
 
+        doc.text(`Largura: ${item.largura}`);
+        doc.text(`Comprimento: ${item.comprimento}`);
+        doc.text(`Espessura: ${item.espessura}`);
+        doc.text(`Observação: ${item.obs_lamina}`);
+    }
 
-doc.end();
+    if (item.tipo_produto === 'usinagem') {
+
+        doc.fontSize(14).text('USINAGEM');
+        doc.fontSize(12);
+
+        doc.text(`Medidas: ${item.medidas_usinagem}`);
+    }
+
+    doc.moveDown();
+
+    // ===== APLICAÇÃO =====
+    doc.fontSize(14).text('APLICAÇÃO');
+    doc.fontSize(12).text(item.aplicacao);
+
+    doc.moveDown();
+
+    // ===== RESPOSTA =====
+    const resposta = item.historico?.slice(-1)[0]?.resposta || 'Sem resposta';
+
+    doc.fontSize(14).text('RESPOSTA');
+    doc.fontSize(12).text(resposta);
+
+    // ===== IMAGEM =====
+    if (item.foto) {
+        doc.addPage();
+
+        doc.fontSize(16).text('ANEXO DO CLIENTE', { align: 'center' });
+        doc.moveDown();
+
+        try {
+            doc.image(path.join(__dirname, item.foto), {
+                fit: [500, 400],
+                align: 'center'
+            });
+        } catch (e) {
+            doc.text('Erro ao carregar imagem');
+        }
+    }
+
+    doc.end();
 });
 
 // =========================
