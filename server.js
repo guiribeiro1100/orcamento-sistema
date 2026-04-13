@@ -4,7 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
-
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
 const app = express();
 
 app.use(cors());
@@ -75,6 +76,9 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         material: b.material || '',
         diametro: b.diametro || '',
         espessura: b.espessura || '',
+
+
+
 
         tipo_furo: b.tipo_furo || '',
         d1: b.d1 || '',
@@ -191,6 +195,55 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.fontSize(12).text(`${item.perfil_corte}`);
     doc.text(`L: ${item.largura}`);
     doc.text(`C: ${item.comprimento}`);
+
+    doc.end();
+});
+app.get('/pdf/:id', (req, res) => {
+    const item = orcamentos.find(o => o.id == req.params.id);
+
+    if (!item) {
+        return res.send('Orçamento não encontrado');
+    }
+
+    const doc = new PDFDocument();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename=orcamento.pdf');
+
+    doc.pipe(res);
+
+    // 🔥 LOGO (coloque um arquivo logo.png na pasta do projeto)
+    doc.image('logo.png', 50, 30, { width: 120 });
+
+    doc.moveDown(5);
+
+    // TÍTULO
+    doc.fontSize(20).text('ORÇAMENTO PROFISSIONAL', { align: 'center' });
+
+    doc.moveDown();
+
+    // DADOS CLIENTE
+    doc.fontSize(12).text(`Status: ${item.status}`);
+    doc.text(`Data: ${new Date(item.id).toLocaleString()}`);
+
+    doc.moveDown();
+
+    // MARCA REFERÊNCIA
+    doc.text(`Marca / Referência: ${item.marca_referencia || '-'}`);
+
+    doc.moveDown();
+
+    // FACAS
+    doc.text('🔪 FACAS');
+    doc.text(`Largura: ${item.facas_largura || '-'}`);
+    doc.text(`Altura: ${item.facas_altura || '-'}`);
+    doc.text(`Espessura: ${item.facas_espessura || '-'}`);
+
+    doc.moveDown();
+
+    // RESPOSTA (🔥 O QUE VOCÊ PEDIU)
+    doc.text('💬 RESPOSTA DO ORÇAMENTO:');
+    doc.text(item.resposta || 'Ainda não respondido');
 
     doc.end();
 });
