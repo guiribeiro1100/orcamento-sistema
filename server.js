@@ -4,10 +4,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // =========================
 // UPLOAD
@@ -64,35 +66,18 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
     const novo = {
         id: Date.now(),
 
-app.post('/orcamento', (req, res) => {
-
-    console.log(req.body); // 👈 AQUI
-
-    orcamentos.push({
-        ...req.body,
-        id: Date.now(),
-        status: 'novo',
-        historico: []
-    });
-
-    res.send({ ok: true });
-});
-
-
-
-
         cliente_cargo: b.cliente_cargo || '',
         empresa_local: b.empresa_local || '',
         email: b.email || '',
         telefone: b.telefone || '',
         vendedor: b.vendedor || '',
 
+        marca_referencia: b.marca_referencia || '',
+
         aplicacao: b.aplicacao || '',
         material: b.material || '',
         diametro: b.diametro || '',
         espessura: b.espessura || '',
-    
-
 
         tipo_furo: b.tipo_furo || '',
         d1: b.d1 || '',
@@ -109,6 +94,11 @@ app.post('/orcamento', (req, res) => {
         perfil_corte: b.perfil_corte || '',
         largura: b.largura || '',
         comprimento: b.comprimento || '',
+
+        // 🔪 FACAS
+        facas_largura: b.facas_largura || '',
+        facas_altura: b.facas_altura || '',
+        facas_espessura: b.facas_espessura || '',
 
         foto: req.file ? '/uploads/' + req.file.filename : null,
 
@@ -165,121 +155,105 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     if (!item) return res.status(404).send('Não encontrado');
 
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
 
     doc.pipe(res);
 
-    doc.fontSize(18).text('ORÇAMENTO TÉCNICO', { align: 'center' });
+    // TÍTULO
+    doc.fontSize(20).text('ORÇAMENTO TÉCNICO', { align: 'center' });
+    doc.moveDown(2);
+
+    // CLIENTE
+    doc.fontSize(14).text('DADOS DO CLIENTE');
+    doc.moveDown(0.5);
+
+    doc.fontSize(12);
+    if (item.cliente_cargo) doc.text(`Cliente: ${item.cliente_cargo}`);
+    if (item.empresa_local) doc.text(`Empresa: ${item.empresa_local}`);
+    if (item.email) doc.text(`Email: ${item.email}`);
+    if (item.telefone) doc.text(`Telefone: ${item.telefone}`);
+    if (item.vendedor) doc.text(`Vendedor: ${item.vendedor}`);
+
     doc.moveDown();
 
-    doc.fontSize(12).text(`Cliente: ${item.cliente_cargo}`);
-    doc.text(`Empresa: ${item.empresa_local}`);
-    doc.text(`Email: ${item.email}`);
-    doc.text(`Telefone: ${item.telefone}`);
-    doc.text(`Vendedor: ${item.vendedor}`);
-    doc.moveDown();
-
+    // ESPECIFICAÇÕES
     doc.fontSize(14).text('ESPECIFICAÇÕES');
-    doc.fontSize(12).text(`Aplicação: ${item.aplicacao}`);
-    doc.text(`Material: ${item.material}`);
-    doc.text(`Diâmetro: ${item.diametro}`);
-    doc.text(`Espessura: ${item.espessura}`);
+    doc.moveDown(0.5);
+
+    doc.fontSize(12);
+    doc.text(`Aplicação: ${item.aplicacao || '-'}`);
+    doc.text(`Material: ${item.material || '-'}`);
+    doc.text(`Diâmetro: ${item.diametro || '-'}`);
+    doc.text(`Espessura: ${item.espessura || '-'}`);
+
     doc.moveDown();
 
+    // FACAS
+    doc.fontSize(14).text('FACAS');
+    doc.moveDown(0.5);
+
+    doc.fontSize(12);
+    doc.text(`Largura: ${item.facas_largura || '-'}`);
+    doc.text(`Altura: ${item.facas_altura || '-'}`);
+    doc.text(`Espessura: ${item.facas_espessura || '-'}`);
+
+    doc.moveDown();
+
+    // FURAÇÃO
     doc.fontSize(14).text('FURAÇÃO');
-    doc.fontSize(12).text(`Tipo: ${item.tipo_furo}`);
-    doc.text(`D1: ${item.d1}`);
-    doc.text(`S1: ${item.s1}`);
-    doc.text(`D2: ${item.d2}`);
-    doc.text(`Dmin: ${item.dmin}`);
-    doc.text(`S2: ${item.s2}`);
-    doc.text(`C1: ${item.c1}`);
+    doc.moveDown(0.5);
+
+    doc.fontSize(12);
+    doc.text(`Tipo: ${item.tipo_furo || '-'}`);
+    doc.text(`D1: ${item.d1 || '-'}`);
+    doc.text(`S1: ${item.s1 || '-'}`);
+    doc.text(`D2: ${item.d2 || '-'}`);
+    doc.text(`Dmin: ${item.dmin || '-'}`);
+    doc.text(`S2: ${item.s2 || '-'}`);
+    doc.text(`C1: ${item.c1 || '-'}`);
+
     doc.moveDown();
 
+    // FIO
     doc.fontSize(14).text('FIO');
-    doc.fontSize(12).text(`${item.tipo_fio}`);
-    doc.text(`DA: ${item.da}`);
-    doc.text(`DF: ${item.df}`);
+    doc.moveDown(0.5);
+
+    doc.fontSize(12);
+    doc.text(`${item.tipo_fio || '-'}`);
+    doc.text(`DA: ${item.da || '-'}`);
+    doc.text(`DF: ${item.df || '-'}`);
+
     doc.moveDown();
 
+    // CORTE
     doc.fontSize(14).text('CORTE');
-    doc.fontSize(12).text(`${item.perfil_corte}`);
-    doc.text(`L: ${item.largura}`);
-    doc.text(`C: ${item.comprimento}`);
+    doc.moveDown(0.5);
 
-    doc.end();
-});
-app.get('/pdf/:id', (req, res) => {
-    const item = orcamentos.find(o => o.id == req.params.id);
-
-    if (!item) {
-        return res.send('Orçamento não encontrado');
-    }
-
-    const doc = new PDFDocument({ margin: 50 });
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename=orcamento.pdf');
-
-    doc.pipe(res);
-
-    // 🔷 LOGO (se não tiver, comenta essa linha)
-    try {
-        doc.image('logo.png', 50, 30, { width: 100 });
-    } catch (e) {}
-
-    // 🔷 TÍTULO
-    doc.fontSize(22)
-       .fillColor('#2563eb')
-       .text('ORÇAMENTO', { align: 'center' });
-
-    doc.moveDown(2);
-
-    // 📌 INFORMAÇÕES
-    doc.fillColor('black').fontSize(12);
-    doc.text(`Status: ${item.status}`);
-    doc.text(`Data: ${new Date(item.id).toLocaleString()}`);
-    doc.text(`Marca / Referência: ${item.marca_referencia || '-'}`);
-
-    doc.moveDown(2);
-
-    // 🔪 FACAS
-doc.moveDown();
-
-doc.fontSize(14)
-   .fillColor('#2563eb')
-   .text('FACAS');
-
-doc.moveDown(0.5);
-
-doc.fontSize(12).fillColor('black');
-doc.text(`Largura: ${item.facas_largura || '-'}`);
-doc.text(`Altura: ${item.facas_altura || '-'}`);
-doc.text(`Espessura: ${item.facas_espessura || '-'}`);
-
-doc.moveDown(2);
-
-    // 💬 RESPOSTA (CAIXA)
-    doc.rect(50, doc.y, 500, 20).fill('#e5e7eb');
-    doc.fillColor('black').text('RESPOSTA DO ORÇAMENTO', 55, doc.y - 18);
+    doc.fontSize(12);
+    doc.text(`${item.perfil_corte || '-'}`);
+    doc.text(`L: ${item.largura || '-'}`);
+    doc.text(`C: ${item.comprimento || '-'}`);
 
     doc.moveDown();
 
-    doc.fontSize(12).text(item.resposta || 'Ainda não respondido');
+    // RESPOSTA
+    const ultimaResposta = item.historico?.slice(-1)[0]?.resposta || 'Sem resposta';
+    doc.fontSize(14).text('RESPOSTA');
+    doc.moveDown(0.5);
 
-    doc.moveDown(3);
+    doc.fontSize(12).text(ultimaResposta);
 
-    // 🔻 RODAPÉ
-    doc.fontSize(10)
-       .fillColor('gray')
-       .text('Documento gerado automaticamente', { align: 'center' });
+    doc.moveDown(2);
+
+    // RODAPÉ
+    doc.fontSize(10).fillColor('gray')
+        .text('Documento gerado automaticamente', { align: 'center' });
 
     doc.end();
 });
-
 
 // =========================
 // START
