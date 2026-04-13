@@ -64,18 +64,9 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
     const novo = {
         id: Date.now(),
 
-        cliente_cargo: b.cliente_cargo || '',
-        empresa_local: b.empresa_local || '',
-        email: b.email || '',
-        telefone: b.telefone || '',
-        vendedor: b.vendedor || '',
+app.post('/orcamento', (req, res) => {
 
-        aplicacao: b.aplicacao || '',
-        material: b.material || '',
-        diametro: b.diametro || '',
-        espessura: b.espessura || '',
-    
-console.log(req.body); // 👈 adiciona isso
+    console.log(req.body); // 👈 AQUI
 
     orcamentos.push({
         ...req.body,
@@ -87,6 +78,20 @@ console.log(req.body); // 👈 adiciona isso
     res.send({ ok: true });
 });
 
+
+
+
+        cliente_cargo: b.cliente_cargo || '',
+        empresa_local: b.empresa_local || '',
+        email: b.email || '',
+        telefone: b.telefone || '',
+        vendedor: b.vendedor || '',
+
+        aplicacao: b.aplicacao || '',
+        material: b.material || '',
+        diametro: b.diametro || '',
+        espessura: b.espessura || '',
+    
 
 
         tipo_furo: b.tipo_furo || '',
