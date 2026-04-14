@@ -69,12 +69,14 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
 // Listar Orçamentos para o Painel
 app.get('/orcamentos', (req, res) => res.json(readDB()));
 
-// Salvar Resposta do Vendedor
+
+// Salvar Resposta do Vendedor e Atualizar Status
 app.post('/orcamento/:id/resposta', (req, res) => {
     const db = readDB();
     const index = db.findIndex(o => o.id == req.params.id);
     if (index !== -1) {
         db[index].resposta_vendedor = req.body.resposta;
+        db[index].status = 'respondido'; // <--- ADICIONADO AQUI
         saveDB(db);
         res.json({ ok: true });
     } else {
