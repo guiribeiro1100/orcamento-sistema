@@ -7,20 +7,17 @@
         body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
         .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
-        
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; }
         .cnpj-title { font-size: 1.3em; color: #1e40af; margin: 0; }
-        
         .info-section { margin-bottom: 15px; }
         .section-label { font-size: 0.75em; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; }
-        
         .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
         .item b { display: block; color: #94a3b8; font-size: 0.7em; text-transform: uppercase; }
         .item span { color: #1e293b; font-weight: 600; font-size: 0.95em; }
-        
         .destaque-tecnico { background: #f0f7ff; padding: 12px; border-radius: 8px; border: 1px solid #3b82f633; }
         .btn-pdf { background: #2563eb; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 0.9em; }
         .btn-pdf:hover { background: #1d4ed8; }
+        .caixa-resposta { margin-top:15px; background: #fefce8; padding: 15px; border-radius: 8px; border: 1px solid #fef08a; }
     </style>
 </head>
 <body>
@@ -33,6 +30,25 @@
 </div>
 
 <script>
+    // FUNÇÃO PARA SALVAR A RESPOSTA NO SERVIDOR
+    async function salvarResposta(id) {
+        const texto = document.getElementById(`res_${id}`).value;
+        try {
+            const res = await fetch(`/orcamento/${id}/resposta`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resposta: texto })
+            });
+            if (res.ok) {
+                alert('✅ Resposta salva com sucesso!');
+            } else {
+                alert('❌ Erro ao salvar resposta.');
+            }
+        } catch (e) {
+            alert('❌ Erro de conexão com o servidor.');
+        }
+    }
+
     async function carregar() {
         const lista = document.getElementById('lista');
         try {
@@ -46,7 +62,7 @@
             }
 
             lista.innerHTML = '';
-            // Ordem decrescente (mais novos primeiro)
+            
             [...dados].reverse().forEach(item => {
                 lista.innerHTML += `
                     <div class="card">
@@ -54,39 +70,6 @@
                             <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
                             <small style="color: #94a3b8">${item.data}</small>
                         </div>
-`
-<div class="card">
-    <div style="margin-top:15px; background: #fefce8; padding: 15px; border-radius: 8px; border: 1px solid #fef08a;">
-        <label style="font-weight:bold; color: #854d0e; display:block; margin-bottom:5px;">✍️ Resposta / Observações do Vendedor:</label>
-        <textarea id="res_${item.id}" style="width:100%; border:1px solid #ca8a04; border-radius:5px; padding:8px;" rows="3" placeholder="Digite aqui o valor ou detalhes do orçamento...">${item.resposta_vendedor || ''}</textarea>
-        <button onclick="salvarResposta(${item.id})" style="margin-top:10px; background:#ca8a04; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">
-            SALVAR RESPOSTA
-        </button>
-    </div>
-
-    <div style="margin-top:15px; display:flex; justify-content:space-between;">
-        <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF COM RESPOSTA</a>
-    </div>
-</div>
-`
-
-// FUNÇÃO PARA SALVAR (Coloque no final do <script> do painel)
-async function salvarResposta(id) {
-    const texto = document.getElementById(`res_${id}`).value;
-    const res = await fetch(`/orcamento/${id}/resposta`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resposta: texto })
-    });
-    if (res.ok) alert('Resposta salva! Agora aparecerá no PDF.');
-}
-
-
-
-
-
-
-
 
                         <div class="info-section">
                             <span class="section-label">👤 Contato e Venda</span>
@@ -118,18 +101,29 @@ async function salvarResposta(id) {
                             </div>
                         </div>
 
-                        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+                        <div class="info-section">
                             <b>Aplicação:</b> <span>${item.aplicacao_final || '---'}</span>
+                        </div>
+
+                        <div class="caixa-resposta">
+                            <label style="font-weight:bold; color: #854d0e; display:block; margin-bottom:5px;">✍️ Resposta / Observações do Vendedor:</label>
+                            <textarea id="res_${item.id}" style="width:100%; border:1px solid #ca8a04; border-radius:5px; padding:8px; box-sizing:border-box;" rows="3" placeholder="Digite o valor ou detalhes para sair no PDF...">${item.resposta_vendedor || ''}</textarea>
+                            <button onclick="salvarResposta(${item.id})" style="margin-top:10px; background:#ca8a04; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">
+                                SALVAR RESPOSTA
+                            </button>
+                        </div>
+
+                        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
                             <div>
-                                ${item.foto ? `<a href="${item.foto}" target="_blank" style="margin-right:15px; font-size:0.9em;">🖼️ Ver Foto</a>` : ''}
-                                <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF</a>
+                                ${item.foto ? `<a href="${item.foto}" target="_blank" style="margin-right:15px; font-size:0.9em; text-decoration:none;">🖼️ Ver Foto</a>` : ''}
                             </div>
+                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF COM RESPOSTA</a>
                         </div>
                     </div>
                 `;
             });
         } catch (e) {
-            lista.innerHTML = "<div style='color:red; text-align:center;'><b>Erro:</b> Servidor não respondeu. Tente atualizar em alguns segundos.</div>";
+            lista.innerHTML = "<div style='color:red; text-align:center;'><b>Erro:</b> Servidor não respondeu. Tente atualizar.</div>";
         }
     }
     carregar();
