@@ -85,7 +85,6 @@ button {
     <option value="usinagem">Peças de usinagem</option>
 </select>
 
-<!-- 🔥 NOVO: MÁQUINA -->
 <input type="text" name="nome_maquina" placeholder="Nome da máquina">
 <input type="text" name="codigo_original" placeholder="Código da peça original">
 
@@ -138,12 +137,9 @@ button {
 
 <textarea id="aplicacao_outro" name="aplicacao_outro" placeholder="Descreva a aplicação" class="hidden"></textarea>
 
-<!-- 🔥 NOVO: QUANTIDADE -->
 <h3>📦 Quantidade</h3>
-
 <input type="text" name="quantidade" placeholder="Quantidade">
 
-<!-- ANEXO -->
 <h3>📸 Anexo</h3>
 <input type="file" name="foto">
 
@@ -154,6 +150,9 @@ button {
 </div>
 
 <script>
+// =========================
+// PRODUTO
+// =========================
 const tipo = document.getElementById('tipo_produto');
 
 const disco = document.getElementById('disco');
@@ -168,6 +167,36 @@ tipo.addEventListener('change', () => {
     if (tipo.value === 'disco') disco.classList.remove('hidden');
     if (tipo.value === 'lamina') lamina.classList.remove('hidden');
     if (tipo.value === 'usinagem') usinagem.classList.remove('hidden');
+});
+
+// =========================
+// MATERIAL OUTRO
+// =========================
+const material = document.getElementById('material_tipo');
+const materialOutro = document.getElementById('material_outro');
+
+material.addEventListener('change', () => {
+    if (material.value === 'outro') {
+        materialOutro.classList.remove('hidden');
+    } else {
+        materialOutro.classList.add('hidden');
+        materialOutro.value = '';
+    }
+});
+
+// =========================
+// APLICAÇÃO OUTRO
+// =========================
+const aplicacao = document.getElementById('aplicacao');
+const aplicacaoOutro = document.getElementById('aplicacao_outro');
+
+aplicacao.addEventListener('change', () => {
+    if (aplicacao.value === 'outro') {
+        aplicacaoOutro.classList.remove('hidden');
+    } else {
+        aplicacaoOutro.classList.add('hidden');
+        aplicacaoOutro.value = '';
+    }
 });
 </script>
 

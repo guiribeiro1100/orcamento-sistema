@@ -77,11 +77,20 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         telefone: b.telefone || '',
         vendedor: b.vendedor || '',
 
-        // MATERIAL / APLICAÇÃO
+        // MATERIAL / APLICAÇÃO (originais)
         material_tipo: b.material_tipo || '',
         material_outro: b.material_outro || '',
         aplicacao: b.aplicacao || '',
         aplicacao_outro: b.aplicacao_outro || '',
+
+        // 🔥 NORMALIZADO (USO FINAL)
+        material_final: b.material_tipo === 'outro'
+            ? b.material_outro
+            : b.material_tipo,
+
+        aplicacao_final: b.aplicacao === 'outro'
+            ? b.aplicacao_outro
+            : b.aplicacao,
 
         // PRODUTO
         tipo_produto: b.tipo_produto || '',
@@ -131,7 +140,7 @@ app.get('/orcamentos', (req, res) => {
 });
 
 // =========================
-// RESPONDER ORÇAMENTO
+// RESPONDER
 // =========================
 
 app.post('/responder/:id', (req, res) => {
@@ -140,6 +149,9 @@ app.post('/responder/:id', (req, res) => {
     const item = db.find(o => o.id == req.params.id);
 
     if (item) {
+
+        if (!item.historico) item.historico = [];
+
         item.resposta = req.body.resposta || '';
         item.status = 'respondido';
 
@@ -155,7 +167,7 @@ app.post('/responder/:id', (req, res) => {
 });
 
 // =========================
-// ALTERAR STATUS
+// STATUS
 // =========================
 
 app.post('/status/:id', (req, res) => {
@@ -172,7 +184,7 @@ app.post('/status/:id', (req, res) => {
 });
 
 // =========================
-// GERAR PDF
+// PDF
 // =========================
 
 app.get('/orcamento/:id/pdf', (req, res) => {
@@ -206,17 +218,8 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.fontSize(14).text('DADOS TÉCNICOS');
     doc.fontSize(12);
 
-    doc.text(`Material: ${
-        item.material_tipo === 'outro'
-            ? item.material_outro
-            : item.material_tipo
-    }`);
-
-    doc.text(`Aplicação: ${
-        item.aplicacao === 'outro'
-            ? item.aplicacao_outro
-            : item.aplicacao
-    }`);
+    doc.text(`Material: ${item.material_final}`);
+    doc.text(`Aplicação: ${item.aplicacao_final}`);
 
     doc.text(`Quantidade: ${item.quantidade}`);
     doc.text(`Máquina: ${item.nome_maquina}`);
