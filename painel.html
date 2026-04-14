@@ -13,18 +13,24 @@ body {
 
 h2 {
     text-align: center;
+    margin-bottom: 10px;
+}
+
+/* 🔎 BUSCA */
+.topo {
+    max-width: 900px;
+    margin: auto;
+    margin-bottom: 20px;
 }
 
 .search {
     width: 100%;
     padding: 12px;
-    margin: 20px auto;
-    max-width: 900px;
-    display: block;
     border-radius: 8px;
     border: 1px solid #ccc;
 }
 
+/* 📦 CARD */
 .card {
     max-width: 900px;
     margin: auto;
@@ -35,21 +41,24 @@ h2 {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
+/* HEADER */
 .header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .status {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
-    color: white;
     font-size: 12px;
+    color: white;
 }
 
 .novo { background: #f59e0b; }
 .respondido { background: #10b981; }
 
+/* GRID */
 .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -59,20 +68,40 @@ h2 {
 
 .bloco {
     background: #f9fafb;
+    padding: 12px;
+    border-radius: 6px;
+    line-height: 1.6;
+}
+
+/* DETALHES */
+.detalhes {
+    margin-top: 10px;
+    background: #f3f4f6;
     padding: 10px;
     border-radius: 6px;
 }
 
+/* FOTO */
+img {
+    margin-top: 10px;
+    border-radius: 8px;
+    max-width: 150px;
+}
+
+/* RESPOSTA */
 textarea {
     width: 100%;
     margin-top: 10px;
-    padding: 8px;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
 }
 
+/* BOTÕES */
 .actions {
+    margin-top: 10px;
     display: flex;
     gap: 10px;
-    margin-top: 10px;
 }
 
 button {
@@ -80,18 +109,31 @@ button {
     padding: 10px;
     border: none;
     border-radius: 6px;
-    color: white;
     cursor: pointer;
+    color: white;
 }
 
 .responder { background: #2563eb; }
 .marcar { background: #10b981; }
 .voltar { background: #f59e0b; }
 
+/* PDF BONITO */
+.pdf {
+    margin-top: 10px;
+    display: inline-block;
+    background: #111827;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+/* HISTÓRICO */
 .historico {
     margin-top: 10px;
     font-size: 13px;
-    background: #f3f4f6;
+    background: #f9fafb;
     padding: 10px;
     border-radius: 6px;
 }
@@ -100,9 +142,11 @@ button {
 
 <body>
 
-<h2>📊 Painel</h2>
+<h2>📊 Painel de Orçamentos</h2>
 
-<input id="busca" class="search" placeholder="🔎 Buscar cliente, empresa ou máquina">
+<div class="topo">
+    <input id="busca" class="search" placeholder="🔎 Buscar cliente, empresa ou máquina">
+</div>
 
 <div id="lista"></div>
 
@@ -121,6 +165,28 @@ function render(listaDados) {
 
     listaDados.forEach(item => {
 
+        let detalhes = '';
+
+        if (item.tipo_produto === 'disco') {
+            detalhes = `
+                Diâmetro ext: ${item.diametro_externo || '-'}<br>
+                Diâmetro int: ${item.diametro_interno || '-'}<br>
+                Fio: ${item.tipo_fio || '-'}
+            `;
+        }
+
+        if (item.tipo_produto === 'lamina') {
+            detalhes = `
+                Largura: ${item.largura || '-'}<br>
+                Comprimento: ${item.comprimento || '-'}<br>
+                Espessura: ${item.espessura || '-'}
+            `;
+        }
+
+        if (item.tipo_produto === 'usinagem') {
+            detalhes = `Medidas: ${item.medidas_usinagem || '-'}`;
+        }
+
         let historicoHTML = '';
 
         if (item.historico && item.historico.length) {
@@ -133,31 +199,46 @@ function render(listaDados) {
             <div class="card">
 
                 <div class="header">
-                    <h3>${item.cliente_cargo}</h3>
-                    <span class="status ${item.status}">${item.status}</span>
+                    <h3>${item.cliente_cargo || 'Sem nome'} • ${item.tipo_produto}</h3>
+                    <span class="status ${item.status}">
+                        ${item.status}
+                    </span>
                 </div>
 
                 <div class="grid">
                     <div class="bloco">
-                        <b>Empresa:</b> ${item.empresa_local}<br>
-                        <b>Telefone:</b> ${item.telefone}<br>
-                        <b>Email:</b> ${item.email}
+                        <b>Empresa:</b> ${item.empresa_local || '-'}<br>
+                        <b>Telefone:</b> ${item.telefone || '-'}<br>
+                        <b>Email:</b> ${item.email || '-'}<br>
+                        <b>Vendedor:</b> ${item.vendedor || '-'}
                     </div>
 
                     <div class="bloco">
-                        <b>Material:</b> ${item.material_tipo}<br>
-                        <b>Qtd:</b> ${item.quantidade}<br>
-                        <b>Máquina:</b> ${item.nome_maquina}
+                        <b>Material:</b> ${item.material_tipo || '-'}<br>
+                        <b>Quantidade:</b> ${item.quantidade || '-'}<br>
+                        <b>Máquina:</b> ${item.nome_maquina || '-'}<br>
+                        <b>Código:</b> ${item.codigo_original || '-'}
                     </div>
                 </div>
 
-                <textarea id="resposta-${item.id}">${item.resposta || ''}</textarea>
+                <div class="detalhes">
+                    ${detalhes}
+                </div>
+
+                ${item.foto ? `<img src="${item.foto}">` : ''}
+
+                <textarea id="resposta-${item.id}" placeholder="Digite a resposta...">${item.resposta || ''}</textarea>
 
                 <div class="actions">
                     <button class="responder" onclick="responder(${item.id})">Salvar</button>
                     <button class="marcar" onclick="status(${item.id}, 'respondido')">Respondido</button>
                     <button class="voltar" onclick="status(${item.id}, 'novo')">Novo</button>
                 </div>
+
+                <!-- 📄 PDF BONITO E ORGANIZADO -->
+                <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
+                    📄 Gerar PDF
+                </a>
 
                 <div class="historico">
                     <b>Histórico:</b><br>
