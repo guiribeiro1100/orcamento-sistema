@@ -85,36 +85,77 @@ app.post('/orcamento/:id/resposta', (req, res) => {
 // Gerar PDF com Resposta
 app.get('/orcamento/:id/pdf', (req, res) => {
     const item = readDB().find(o => o.id == req.params.id);
-    if (!item) return res.status(404).send('Não encontrado');
+    if (!item) return res.status(404).send('Orçamento não encontrado');
 
-    const doc = new PDFDocument({ margin: 30 });
+    const doc = new PDFDocument({ margin: 30, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
     doc.pipe(res);
 
-    doc.fontSize(20).text('ORÇAMENTO TÉCNICO', { align: 'center' }).moveDown();
-    doc.fontSize(12).text(`CNPJ: ${item.cnpj} | Data: ${item.data}`);
-    doc.text(`Cliente: ${item.cliente_cargo} | Vendedor: ${item.vendedor}`).moveDown();
-    
-    doc.fontSize(14).font('Helvetica-Bold').text('ESPECIFICAÇÕES:');
-    doc.fontSize(12).font('Helvetica').text(`Produto: ${item.tipo_produto ? item.tipo_produto.toUpperCase() : '---'}`);
-    doc.text(`Ângulo: ${item.angulo_corte} | Fio: ${item.tipo_fio}`);
-    doc.text(`Medidas: ${item.diametros !== " / " ? item.diametros : item.dimensoes_lamina}`);
-    doc.text(`Quantidade: ${item.quantidade}`).moveDown();
+    // Cabeçalho
+    doc.fontSize(22).font('Helvetica-Bold').text('SOLICITAÇÃO DE ORÇAMENTO TÉCNICO', { align: 'center' }).moveDown();
+    doc.fontSize(10).font('Helvetica').text(`ID: ${item.id} | Data: ${item.data}`, { align: 'right' }).moveDown();
 
+    // --- SEÇÃO 1: CLIENTE ---
+    doc.rect(30, doc.y, 535, 15).fill('#1e40af');
+    doc.fillColor('#fff').font('Helvetica-Bold').text(' IDENTIFICAÇÃO DO CLIENTE', 35, doc.y - 12).moveDown(0.5);
+    
+    doc.fillColor('#000').font('Helvetica').fontSize(11);
+    doc.text(`CNPJ: ${item.cnpj || '---'}`);
+    doc.text(`Cliente/Cargo: ${item.cliente_cargo || '---'}`);
+    doc.text(`Vendedor Responsável: ${item.vendedor || '---'}`);
+    doc.text(`E-mail: ${item.email || '---'}`);
+    doc.text(`WhatsApp/Telefone: ${item.telefone || '---'}`).moveDown();
+
+    // --- SEÇÃO 2: EQUIPAMENTO E PRODUTO ---
+    doc.rect(30, doc.y, 535, 15).fill('#1e40af');
+    doc.fillColor('#fff').font('Helvetica-Bold').text(' ESPECIFICAÇÕES DO PRODUTO', 35, doc.y - 12).moveDown(0.5);
+
+    doc.fillColor('#000').font('Helvetica');
+    doc.text(`Tipo de Produto: ${(item.tipo_produto || '---').toUpperCase()}`);
+    doc.text(`Nome da Máquina: ${item.nome_maquina || '---'}`);
+    doc.text(`Código da Peça Original: ${item.codigo_original || '---'}`).moveDown();
+
+    // --- SEÇÃO 3: DETALHES TÉCNICOS ---
+    doc.rect(30, doc.y, 535, 15).fill('#3b82f6');
+    doc.fillColor('#fff').font('Helvetica-Bold').text(' DETALHES TÉCNICOS E MEDIDAS', 35, doc.y - 12).moveDown(0.5);
+
+    doc.fillColor('#000').font('Helvetica');
+    doc.text(`Ângulo de Corte: ${item.angulo_corte || '---'}`);
+    doc.text(`Tipo de Fio: ${(item.tipo_fio || '---').toUpperCase()}`);
+    
+    // Mostra medidas dependendo do produto
+    if (item.tipo_produto === 'disco') {
+        doc.text(`Diâmetros (Ext/Int): ${item.diametros}`);
+        doc.text(`Perfil de Corte: ${item.perfil || '---'}`);
+    } else if (item.tipo_produto === 'lamina') {
+        doc.text(`Dimensões (LxC): ${item.dimensoes_lamina}`);
+    } else {
+        doc.text(`Medidas Usinagem: ${item.medidas_usinagem || '---'}`);
+    }
+    
+    doc.text(`Espessura: ${item.espessura || '---'}`);
+    doc.text(`Quantidade: ${item.quantidade || '---'}`);
+    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown();
+
+    // --- SEÇÃO 4: RESPOSTA DO VENDEDOR (DESTAQUE) ---
     if (item.resposta_vendedor) {
-        doc.rect(30, doc.y, 530, 25).fill('#e2e8f0');
-        doc.fillColor('#1e3a8a').font('Helvetica-Bold').text('RESPOSTA DO ORÇAMENTO:', 35, doc.y - 18);
-        doc.fillColor('#000').font('Helvetica').text(item.resposta_vendedor, 35, doc.y + 10).moveDown();
+        doc.rect(30, doc.y, 535, 20).fill('#fef08a');
+        doc.fillColor('#854d0e').font('Helvetica-Bold').text(' RESPOSTA / OBSERVAÇÕES DO ORÇAMENTO:', 35, doc.y - 16).moveDown(0.5);
+        doc.fillColor('#000').font('Helvetica').text(item.resposta_vendedor, 35, doc.y).moveDown();
     }
 
+    // --- SEÇÃO 5: FOTO (EM NOVA PÁGINA SE EXISTIR) ---
     if (item.foto) {
         const imgPath = path.join(__dirname, item.foto);
         if (fs.existsSync(imgPath)) {
-            doc.addPage().text('FOTO DE REFERÊNCIA:').image(imgPath, { fit: [500, 400], align: 'center' });
+            doc.addPage();
+            doc.fontSize(14).font('Helvetica-Bold').text('FOTO DE REFERÊNCIA:', { align: 'center' }).moveDown();
+            doc.image(imgPath, { fit: [500, 600], align: 'center' });
         }
     }
+
     doc.end();
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor ativo na porta ${PORT}`));
