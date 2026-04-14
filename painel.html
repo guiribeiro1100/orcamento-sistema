@@ -2,58 +2,101 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Gestão</title>
+    <title>Painel Administrativo | Orçamentos</title>
     <style>
-        body { font-family: sans-serif; background: #eef2f7; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 8px solid #2563eb; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 10px; }
-        b { color: #64748b; font-size: 0.8em; text-transform: uppercase; display: block; }
-        span { color: #1e293b; font-weight: bold; }
-        .btn-pdf { background: #2563eb; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 15px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; }
+        .cnpj-title { font-size: 1.3em; color: #1e40af; margin: 0; }
+        
+        .info-section { margin-bottom: 15px; }
+        .section-label { font-size: 0.75em; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; }
+        
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .item b { display: block; color: #94a3b8; font-size: 0.7em; text-transform: uppercase; }
+        .item span { color: #1e293b; font-weight: 600; font-size: 0.95em; }
+        
+        .destaque-tecnico { background: #f0f7ff; padding: 12px; border-radius: 8px; border: 1px solid #3b82f633; }
+        .btn-pdf { background: #2563eb; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 0.9em; }
+        .btn-pdf:hover { background: #1d4ed8; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align:center">📋 Orçamentos Recebidos</h2>
-    <div id="lista">Carregando...</div>
+<div class="container">
+    <h2 style="text-align: center; color: #1e3a8a;">📋 Gestão de Orçamentos Técnicos</h2>
+    <div id="lista">
+        <p style="text-align: center;">Buscando orçamentos...</p>
+    </div>
+</div>
 
 <script>
     async function carregar() {
         const lista = document.getElementById('lista');
         try {
             const res = await fetch('/orcamentos');
+            if (!res.ok) throw new Error();
             const dados = await res.json();
-
+            
             if (!dados || dados.length === 0) {
-                lista.innerHTML = "<h3>Nenhum orçamento disponível.</h3>";
+                lista.innerHTML = "<p style='text-align:center;'>Nenhum orçamento recebido ainda.</p>";
                 return;
             }
 
             lista.innerHTML = '';
+            // Ordem decrescente (mais novos primeiro)
             [...dados].reverse().forEach(item => {
                 lista.innerHTML += `
                     <div class="card">
-                        <div style="display:flex; justify-content:space-between">
-                            <h3 style="margin:0">CNPJ: ${item.cnpj || '---'}</h3>
-                            <small>${item.data}</small>
-                        </div>
-                        
-                        <div class="grid">
-                            <div><b>Vendedor</b><span>${item.vendedor || '---'}</span></div>
-                            <div><b>Contato</b><span>${item.cliente_cargo}</span></div>
-                            <div><b>Produto</b><span>${item.tipo_produto.toUpperCase()}</span></div>
-                            <div><b>Ângulo Corte</b><span style="color:#2563eb">${item.angulo_corte || '---'}</span></div>
-                            <div><b>Tipo de Fio</b><span>${(item.tipo_fio || '---').toUpperCase()}</span></div>
-                            <div><b>Quantidade</b><span>${item.quantidade}</span></div>
-                            <div><b>Aplicação</b><span>${item.aplicacao_final}</span></div>
+                        <div class="card-header">
+                            <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
+                            <small style="color: #94a3b8">${item.data}</small>
                         </div>
 
-                        <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">ABRIR PDF</a>
+                        <div class="info-section">
+                            <span class="section-label">👤 Contato e Venda</span>
+                            <div class="data-grid">
+                                <div class="item"><b>Vendedor</b><span>${item.vendedor || '---'}</span></div>
+                                <div class="item"><b>Cliente / Cargo</b><span>${item.cliente_cargo || '---'}</span></div>
+                                <div class="item"><b>WhatsApp</b><span>${item.telefone || '---'}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <span class="section-label">⚙️ Máquina e Produto</span>
+                            <div class="data-grid">
+                                <div class="item"><b>Máquina</b><span>${item.nome_maquina || '---'}</span></div>
+                                <div class="item"><b>Cód. Original</b><span>${item.codigo_original || '---'}</span></div>
+                                <div class="item"><b>Tipo</b><span>${(item.tipo_produto || '').toUpperCase()}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="info-section destaque-tecnico">
+                            <span class="section-label" style="color:#2563eb">🔧 Especificações Técnicas</span>
+                            <div class="data-grid">
+                                <div class="item"><b>Ângulo de Corte</b><span style="color:#2563eb; font-size: 1.1em;">${item.angulo_corte || '---'}</span></div>
+                                <div class="item"><b>Tipo de Fio</b><span>${(item.tipo_fio || '---').toUpperCase()}</span></div>
+                                <div class="item"><b>Medidas</b><span>${item.diametros !== " / " ? item.diametros : (item.dimensoes_lamina || item.medidas_usinagem || '---')}</span></div>
+                                <div class="item"><b>Espessura</b><span>${item.espessura || '---'}</span></div>
+                                <div class="item"><b>Perfil</b><span>${item.perfil || '---'}</span></div>
+                                <div class="item"><b>Quantidade</b><span>${item.quantidade || '0'}</span></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+                            <b>Aplicação:</b> <span>${item.aplicacao_final || '---'}</span>
+                            <div>
+                                ${item.foto ? `<a href="${item.foto}" target="_blank" style="margin-right:15px; font-size:0.9em;">🖼️ Ver Foto</a>` : ''}
+                                <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF</a>
+                            </div>
+                        </div>
                     </div>
                 `;
             });
         } catch (e) {
-            lista.innerHTML = "<h3>Erro ao conectar com o servidor.</h3>";
+            lista.innerHTML = "<div style='color:red; text-align:center;'><b>Erro:</b> Servidor não respondeu. Tente atualizar em alguns segundos.</div>";
         }
     }
     carregar();
