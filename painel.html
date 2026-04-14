@@ -2,129 +2,78 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Administrativo | Orçamentos</title>
+    <title>Painel Administrativo</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
-        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; }
-        .cnpj-title { font-size: 1.3em; color: #1e40af; margin: 0; }
-        .info-section { margin-bottom: 15px; }
-        .section-label { font-size: 0.75em; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; display: block; border-bottom: 1px solid #eee; }
-        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-        .item b { display: block; color: #94a3b8; font-size: 0.7em; text-transform: uppercase; }
-        .item span { color: #1e293b; font-weight: 600; font-size: 0.95em; }
-        .destaque-tecnico { background: #f0f7ff; padding: 12px; border-radius: 8px; border: 1px solid #3b82f633; }
-        .btn-pdf { background: #2563eb; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 0.9em; }
-        .btn-pdf:hover { background: #1d4ed8; }
-        .caixa-resposta { margin-top:15px; background: #fefce8; padding: 15px; border-radius: 8px; border: 1px solid #fef08a; }
+        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .btn-pdf { background: #2563eb; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; }
+        .busca-container { margin-bottom: 20px; }
+        .busca-container input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; }
+        .caixa-resposta { background: #fefce8; padding: 15px; border-radius: 8px; border: 1px solid #fef08a; margin-top: 15px; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <h2 style="text-align: center; color: #1e3a8a;">📋 Gestão de Orçamentos Técnicos</h2>
-    <div id="lista">
-        <p style="text-align: center;">Buscando orçamentos...</p>
+    <h2 style="text-align: center; color: #1e3a8a;">📋 Gestão de Orçamentos</h2>
+    
+    <div class="busca-container">
+        <input type="text" id="busca" onkeyup="filtrar()" placeholder="🔍 Buscar por CNPJ, Vendedor, Máquina ou Material...">
     </div>
+
+    <div id="lista"><p style="text-align: center;">Buscando...</p></div>
 </div>
 
 <script>
-    // FUNÇÃO PARA SALVAR A RESPOSTA NO SERVIDOR
-    async function salvarResposta(id) {
-        const texto = document.getElementById(`res_${id}`).value;
-        try {
-            const res = await fetch(`/orcamento/${id}/resposta`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ resposta: texto })
-            });
-            if (res.ok) {
-                alert('✅ Resposta salva com sucesso!');
-            } else {
-                alert('❌ Erro ao salvar resposta.');
-            }
-        } catch (e) {
-            alert('❌ Erro de conexão com o servidor.');
-        }
-    }
-
     async function carregar() {
-        const lista = document.getElementById('lista');
         try {
             const res = await fetch('/orcamentos');
-            if (!res.ok) throw new Error();
             const dados = await res.json();
-            
-            if (!dados || dados.length === 0) {
-                lista.innerHTML = "<p style='text-align:center;'>Nenhum orçamento recebido ainda.</p>";
-                return;
-            }
-
+            const lista = document.getElementById('lista');
             lista.innerHTML = '';
             
             [...dados].reverse().forEach(item => {
+                const respondido = item.status === 'respondido';
                 lista.innerHTML += `
-                    <div class="card">
+                    <div class="card" style="${respondido ? 'border-left-color: #22c55e;' : ''}">
                         <div class="card-header">
-                            <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
-                            <small style="color: #94a3b8">${item.data}</small>
+                            <b>CNPJ: ${item.cnpj}</b>
+                            <span>${respondido ? '✅ RESPONDIDO' : '⏳ PENDENTE'}</span>
                         </div>
-
-                        <div class="info-section">
-                            <span class="section-label">👤 Contato e Venda</span>
-                            <div class="data-grid">
-                                <div class="item"><b>Vendedor</b><span>${item.vendedor || '---'}</span></div>
-                                <div class="item"><b>Cliente / Cargo</b><span>${item.cliente_cargo || '---'}</span></div>
-                                <div class="item"><b>WhatsApp</b><span>${item.telefone || '---'}</span></div>
-                            </div>
-                        </div>
-
-                        <div class="info-section">
-                            <span class="section-label">⚙️ Máquina e Produto</span>
-                            <div class="data-grid">
-                                <div class="item"><b>Máquina</b><span>${item.nome_maquina || '---'}</span></div>
-                                <div class="item"><b>Cód. Original</b><span>${item.codigo_original || '---'}</span></div>
-                                <div class="item"><b>Tipo</b><span>${(item.tipo_produto || '').toUpperCase()}</span></div>
-                            </div>
-                        </div>
-
-                        <div class="info-section destaque-tecnico">
-                            <span class="section-label" style="color:#2563eb">🔧 Especificações Técnicas</span>
-                            <div class="data-grid">
-                                <div class="item"><b>Ângulo de Corte</b><span style="color:#2563eb; font-size: 1.1em;">${item.angulo_corte || '---'}</span></div>
-                                <div class="item"><b>Tipo de Fio</b><span>${(item.tipo_fio || '---').toUpperCase()}</span></div>
-                                <div class="item"><b>Medidas</b><span>${item.diametros !== " / " ? item.diametros : (item.dimensoes_lamina || item.medidas_usinagem || '---')}</span></div>
-                                <div class="item"><b>Espessura</b><span>${item.espessura || '---'}</span></div>
-                                <div class="item"><b>Perfil</b><span>${item.perfil || '---'}</span></div>
-                                <div class="item"><b>Quantidade</b><span>${item.quantidade || '0'}</span></div>
-                            </div>
-                        </div>
-
-                        <div class="info-section">
-                            <b>Aplicação:</b> <span>${item.aplicacao_final || '---'}</span>
-                        </div>
-
+                        <p><b>Vendedor:</b> ${item.vendedor} | <b>Máquina:</b> ${item.nome_maquina} | <b>Material:</b> ${item.material}</p>
+                        <p><b>Medidas:</b> ${item.diametros !== " / " ? item.diametros : item.dimensoes_lamina} | <b>Espessura:</b> ${item.espessura}</p>
+                        
                         <div class="caixa-resposta">
-                            <label style="font-weight:bold; color: #854d0e; display:block; margin-bottom:5px;">✍️ Resposta / Observações do Vendedor:</label>
-                            <textarea id="res_${item.id}" style="width:100%; border:1px solid #ca8a04; border-radius:5px; padding:8px; box-sizing:border-box;" rows="3" placeholder="Digite o valor ou detalhes para sair no PDF...">${item.resposta_vendedor || ''}</textarea>
-                            <button onclick="salvarResposta(${item.id})" style="margin-top:10px; background:#ca8a04; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">
-                                SALVAR RESPOSTA
-                            </button>
+                            <textarea id="res_${item.id}" style="width:100%; height:60px;">${item.resposta_vendedor || ''}</textarea>
+                            <button onclick="salvarResposta(${item.id})" style="margin-top:5px; cursor:pointer;">SALVAR RESPOSTA</button>
                         </div>
-
-                        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                ${item.foto ? `<a href="${item.foto}" target="_blank" style="margin-right:15px; font-size:0.9em; text-decoration:none;">🖼️ Ver Foto</a>` : ''}
-                            </div>
-                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF COM RESPOSTA</a>
+                        <div style="margin-top:15px; display:flex; justify-content:space-between;">
+                            ${item.foto ? `<a href="${item.foto}" target="_blank">🖼️ Ver Foto</a>` : '<span></span>'}
+                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF</a>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
-        } catch (e) {
-            lista.innerHTML = "<div style='color:red; text-align:center;'><b>Erro:</b> Servidor não respondeu. Tente atualizar.</div>";
-        }
+        } catch(e) { document.getElementById('lista').innerHTML = "Erro ao carregar."; }
+    }
+
+    async function salvarResposta(id) {
+        const texto = document.getElementById(`res_${id}`).value;
+        await fetch(`/orcamento/${id}/resposta`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resposta: texto })
+        });
+        alert("Salvo!");
+        carregar();
+    }
+
+    function filtrar() {
+        const termo = document.getElementById('busca').value.toLowerCase();
+        const cards = document.getElementsByClassName('card');
+        Array.from(cards).forEach(card => {
+            card.style.display = card.innerText.toLowerCase().includes(termo) ? "block" : "none";
+        });
     }
     carregar();
 </script>

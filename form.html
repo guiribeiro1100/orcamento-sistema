@@ -72,7 +72,19 @@
                     <label>Nome da Máquina</label>
                     <input type="text" name="nome_maquina">
                 </div>
-                <div>
+<div class="campo">
+    <label>Material:</label>
+    <select name="material" id="material" onchange="document.getElementById('m_outro').style.display = this.value === 'outro' ? 'block' : 'none'">
+        <option value="M3">M3</option>
+        <option value="M9">M9</option>
+        <option value="outro">Outros</option>
+    </select>
+    <input type="text" name="material_outro" id="m_outro" placeholder="Qual material?" style="display:none; margin-top:5px;">
+</div>               
+
+
+
+ <div>
                     <label>Código da Peça Original</label>
                     <input type="text" name="codigo_original">
                 </div>
