@@ -72,6 +72,10 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         telefone: b.telefone || '',
         vendedor: b.vendedor || '',
 
+material_outro: b.material_outro || '',
+aplicacao_outro: b.aplicacao_outro || '',
+espessura_disco: b.espessura_disco || '',
+
         // NOVOS CAMPOS
         material_tipo: b.material_tipo || '',
         quantidade: b.quantidade || '',
@@ -82,11 +86,14 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         tipo_produto: b.tipo_produto || '',
 
         // DISCO
-        diametro_externo: b.diametro_externo || '',
-        diametro_interno: b.diametro_interno || '',
-        tipo_fio: b.tipo_fio || '',
-        tipo_fio_desc: b.tipo_fio_desc || '',
-        obs_disco: b.obs_disco || '',
+      detalhes = `
+    Diâmetro ext: ${item.diametro_externo || '-'}<br>
+    Diâmetro int: ${item.diametro_interno || '-'}<br>
+    Espessura: ${item.espessura_disco || '-'}<br>
+    Tipo de fio: ${item.tipo_fio || '-'}<br>
+    Descrição do fio: ${item.tipo_fio_desc || '-'}<br>
+    Observação: ${item.obs_disco || '-'}
+`;
 
         // LÂMINA
         largura: b.largura || '',
@@ -198,7 +205,22 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Telefone: ${item.telefone}`);
     doc.text(`Vendedor: ${item.vendedor}`);
     doc.moveDown();
+doc.moveDown();
 
+doc.fontSize(14).text('DADOS TÉCNICOS');
+doc.fontSize(12);
+
+doc.text(`Material: ${
+    item.material_tipo === 'outro'
+        ? item.material_outro
+        : item.material_tipo
+}`);
+
+doc.text(`Aplicação: ${
+    item.aplicacao === 'outro'
+        ? item.aplicacao_outro
+        : item.aplicacao
+}`);
     doc.text(`Material: ${item.material_tipo}`);
     doc.text(`Quantidade: ${item.quantidade}`);
     doc.text(`Máquina: ${item.nome_maquina}`);
@@ -207,10 +229,16 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.text(`Tipo: ${item.tipo_produto}`);
 
-  if (item.tipo_produto === 'disco') {
-    doc.text(`Diâmetro externo: ${item.diametro_externo}`);
-    doc.text(`Diâmetro interno: ${item.diametro_interno}`);
-    doc.text(`Tipo de fio: ${item.tipo_fio}`);
+ if (item.tipo_produto === 'disco') {
+    doc.moveDown();
+
+    doc.fontSize(14).text('DISCO');
+    doc.fontSize(12);
+
+    doc.text(`Diâmetro externo: ${item.diametro_externo || '-'}`);
+    doc.text(`Diâmetro interno: ${item.diametro_interno || '-'}`);
+    doc.text(`Espessura: ${item.espessura_disco || '-'}`);
+    doc.text(`Tipo de fio: ${item.tipo_fio || '-'}`);
     doc.text(`Descrição do fio: ${item.tipo_fio_desc || '-'}`);
     doc.text(`Observação: ${item.obs_disco || '-'}`);
 }
@@ -245,7 +273,35 @@ if (item.foto) {
     }
 }
 
+const material = document.getElementById('material_tipo');
+const materialOutro = document.getElementById('material_outro');
 
+material.addEventListener('change', () => {
+    materialOutro.classList.toggle('hidden', material.value !== 'outro');
+});
+
+const aplicacao = document.getElementById('aplicacao');
+const aplicacaoOutro = document.getElementById('aplicacao_outro');
+
+aplicacao.addEventListener('change', () => {
+    aplicacaoOutro.classList.toggle('hidden', aplicacao.value !== 'outro');
+});
+if (item.foto) {
+    try {
+        doc.addPage();
+
+        doc.fontSize(14).text('Anexo');
+        doc.moveDown();
+
+        doc.image(path.join(__dirname, item.foto), {
+            fit: [400, 400],
+            align: 'center'
+        });
+
+    } catch (e) {
+        console.log('Erro ao carregar imagem:', e);
+    }
+}
     doc.end();
 });
 

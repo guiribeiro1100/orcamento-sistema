@@ -65,17 +65,17 @@ button {
 <input type="text" name="telefone" placeholder="Telefone">
 <input type="text" name="vendedor" placeholder="Vendedor">
 
-<!-- 🔥 NOVO: MATERIAL -->
 <h3>🧱 Material</h3>
 
-<select name="material_tipo">
+<select name="material_tipo" id="material_tipo">
     <option value="">Selecione</option>
     <option value="m9">M9</option>
     <option value="m3">M3</option>
-    <option value="outros">Outros</option>
+    <option value="outro">Outro</option>
 </select>
 
-<!-- ESPECIFICAÇÃO -->
+<textarea id="material_outro" name="material_outro" placeholder="Descreva o material" class="hidden"></textarea>
+
 <h3>⚙️ Especificação</h3>
 
 <select name="tipo_produto" id="tipo_produto" required>
@@ -94,7 +94,7 @@ button {
 
 <input type="text" name="diametro_externo" placeholder="Diâmetro externo">
 <input type="text" name="diametro_interno" placeholder="Diâmetro interno">
-
+<input type="text" name="espessura_disco" placeholder="Espessura">
 <select name="tipo_fio">
     <option value="">Tipo de fio</option>
     <option value="fio_unico">Fio único</option>
@@ -126,14 +126,17 @@ button {
 <!-- APLICAÇÃO -->
 <h3>🏭 Aplicação</h3>
 
-<select name="aplicacao">
+<select name="aplicacao" id="aplicacao">
     <option value="">Selecione</option>
     <option value="aves">Aves</option>
     <option value="bovinos">Bovinos</option>
     <option value="suinos">Suínos</option>
     <option value="pescados">Pescados</option>
     <option value="fabricantes">Fabricantes de máquinas</option>
+    <option value="outro">Outro</option>
 </select>
+
+<textarea id="aplicacao_outro" name="aplicacao_outro" placeholder="Descreva a aplicação" class="hidden"></textarea>
 
 <!-- 🔥 NOVO: QUANTIDADE -->
 <h3>📦 Quantidade</h3>
