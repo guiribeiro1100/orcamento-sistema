@@ -13,7 +13,7 @@ body {
 
 h2 {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .card {
@@ -31,7 +31,7 @@ h2 {
 }
 
 .status {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-size: 12px;
     color: white;
@@ -45,22 +45,11 @@ h2 {
     background: #10b981;
 }
 
-.info {
-    margin-top: 10px;
-    line-height: 1.6;
-}
-
-.detalhes {
-    margin-top: 10px;
-    background: #f9fafb;
+.bloco {
+    margin-top: 15px;
     padding: 10px;
+    background: #f9fafb;
     border-radius: 6px;
-}
-
-img {
-    margin-top: 10px;
-    border-radius: 8px;
-    max-width: 150px;
 }
 
 textarea {
@@ -83,11 +72,19 @@ button {
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    color: white;
 }
 
 .responder {
     background: #2563eb;
-    color: white;
+}
+
+.marcar {
+    background: #10b981;
+}
+
+.voltar {
+    background: #f59e0b;
 }
 
 .pdf {
@@ -98,7 +95,7 @@ button {
     border-radius: 6px;
     text-decoration: none;
     display: inline-block;
-    flex: 1;
+    margin-top: 10px;
 }
 </style>
 </head>
@@ -123,22 +120,22 @@ async function carregar() {
 
         if (item.tipo_produto === 'disco') {
             detalhes = `
-                🔵 Diâmetro ext: ${item.diametro_externo || '-'}<br>
-                🔵 Diâmetro int: ${item.diametro_interno || '-'}<br>
-                🔵 Fio: ${item.tipo_fio || '-'}
+                Diâmetro ext: ${item.diametro_externo || '-'}<br>
+                Diâmetro int: ${item.diametro_interno || '-'}<br>
+                Fio: ${item.tipo_fio || '-'}
             `;
         }
 
         if (item.tipo_produto === 'lamina') {
             detalhes = `
-                📏 Largura: ${item.largura || '-'}<br>
-                📏 Comprimento: ${item.comprimento || '-'}<br>
-                📏 Espessura: ${item.espessura || '-'}
+                Largura: ${item.largura || '-'}<br>
+                Comprimento: ${item.comprimento || '-'}<br>
+                Espessura: ${item.espessura || '-'}
             `;
         }
 
         if (item.tipo_produto === 'usinagem') {
-            detalhes = `⚙️ Medidas: ${item.medidas_usinagem || '-'}`;
+            detalhes = `Medidas: ${item.medidas_usinagem || '-'}`;
         }
 
         lista.innerHTML += `
@@ -151,36 +148,45 @@ async function carregar() {
                     </span>
                 </div>
 
-                <div class="info">
+                <div class="bloco">
                     <b>Empresa:</b> ${item.empresa_local || '-'} <br>
                     <b>Telefone:</b> ${item.telefone || '-'} <br>
                     <b>Email:</b> ${item.email || '-'} <br>
                     <b>Vendedor:</b> ${item.vendedor || '-'} <br>
-                    <b>Aplicação:</b> ${item.aplicacao || '-'} <br>
+                </div>
 
+                <div class="bloco">
                     <b>Material:</b> ${item.material_tipo || '-'} <br>
                     <b>Quantidade:</b> ${item.quantidade || '-'} <br>
                     <b>Máquina:</b> ${item.nome_maquina || '-'} <br>
                     <b>Código:</b> ${item.codigo_original || '-'} <br>
                 </div>
 
-                <div class="detalhes">
+                <div class="bloco">
                     ${detalhes}
                 </div>
 
-                ${item.foto ? `<img src="${item.foto}">` : ''}
+                ${item.foto ? `<img src="${item.foto}" style="max-width:150px;margin-top:10px;border-radius:8px;">` : ''}
 
-                <textarea id="resposta-${item.id}" placeholder="Digite a resposta..."></textarea>
+                <textarea id="resposta-${item.id}" placeholder="Digite a resposta...">${item.resposta || ''}</textarea>
 
                 <div class="actions">
                     <button class="responder" onclick="responder(${item.id})">
-                        Responder
+                        Salvar resposta
                     </button>
 
-                    <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
-                        📄 PDF
-                    </a>
+                    <button class="marcar" onclick="mudarStatus(${item.id}, 'respondido')">
+                        Marcar respondido
+                    </button>
+
+                    <button class="voltar" onclick="mudarStatus(${item.id}, 'novo')">
+                        Voltar p/ novo
+                    </button>
                 </div>
+
+                <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
+                    📄 Gerar PDF
+                </a>
 
             </div>
         `;
@@ -196,7 +202,17 @@ async function responder(id) {
         body: JSON.stringify({ resposta: texto })
     });
 
-    alert('Resposta enviada!');
+    alert('Resposta salva!');
+    carregar();
+}
+
+async function mudarStatus(id, status) {
+    await fetch('/status/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+    });
+
     carregar();
 }
 

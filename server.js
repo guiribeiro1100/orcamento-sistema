@@ -177,6 +177,17 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Telefone: ${item.telefone}`);
     doc.text(`Vendedor: ${item.vendedor}`);
     doc.moveDown();
+app.post('/status/:id', (req, res) => {
+    const db = readDB();
+    const item = db.find(o => o.id == req.params.id);
+
+    if (item) {
+        item.status = req.body.status;
+        saveDB(db);
+    }
+
+    res.send({ ok: true });
+});
 
     // NOVOS CAMPOS
     doc.text(`Material: ${item.material_tipo}`);
