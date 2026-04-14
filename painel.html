@@ -2,70 +2,146 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Administrativo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Orçamentos Técnicos</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        .btn-pdf { background: #2563eb; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; }
-        .busca-container { margin-bottom: 20px; }
-        .busca-container input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; }
-        .caixa-resposta { background: #fefce8; padding: 15px; border-radius: 8px; border: 1px solid #fef08a; margin-top: 15px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
+        .container { max-width: 900px; margin: auto; }
+        h2 { text-align: center; color: #1e40af; margin-bottom: 30px; }
+        
+        /* BARRA DE BUSCA */
+        .busca-container { margin-bottom: 25px; }
+        #busca { width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #cbd5e1; font-size: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); outline: none; transition: border 0.3s; }
+        #busca:focus { border-color: #3b82f6; }
+
+        .card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-left: 8px solid #3b82f6; position: relative; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 15px; }
+        .cnpj-title { margin: 0; color: #1e40af; font-size: 1.4rem; }
+        
+        .info-section { margin-bottom: 15px; padding: 10px; border-radius: 8px; background: #f8fafc; }
+        .section-label { display: block; font-size: 0.75rem; font-weight: bold; color: #64748b; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+        
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .item b { display: block; font-size: 0.85rem; color: #475569; }
+        .item span { font-size: 1rem; color: #1e293b; font-weight: 500; }
+
+        .caixa-resposta { background: #fffbeb; padding: 15px; border-radius: 10px; border: 1px solid #fef08a; margin: 20px 0; }
+        textarea { width: 100%; border: 1px solid #facc15; border-radius: 6px; padding: 10px; font-family: inherit; resize: vertical; box-sizing: border-box; }
+        
+        .btn-salvar { background: #ca8a04; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; transition: background 0.3s; }
+        .btn-salvar:hover { background: #a16207; }
+        
+        .btn-pdf { background: #1e40af; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; display: inline-block; transition: transform 0.2s; }
+        .btn-pdf:hover { transform: scale(1.02); background: #1d4ed8; }
+        
+        .status-badge { padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
+        .pendente { background: #fee2e2; color: #991b1b; }
+        .respondido { background: #dcfce7; color: #166534; }
     </style>
 </head>
 <body>
+
 <div class="container">
-    <h2 style="text-align: center; color: #1e3a8a;">📋 Gestão de Orçamentos</h2>
-    
+    <h2>📋 Gestão de Orçamentos Técnicos</h2>
+
     <div class="busca-container">
-        <input type="text" id="busca" onkeyup="filtrar()" placeholder="🔍 Buscar por CNPJ, Vendedor, Máquina ou Material...">
+        <input type="text" id="busca" onkeyup="filtrar()" placeholder="🔍 Buscar por CNPJ, Vendedor, Máquina, Material ou Ângulo...">
     </div>
 
-    <div id="lista"><p style="text-align: center;">Buscando...</p></div>
+    <div id="lista">
+        <p style="text-align: center;">Buscando orçamentos...</p>
+    </div>
 </div>
 
 <script>
     async function carregar() {
+        const lista = document.getElementById('lista');
         try {
             const res = await fetch('/orcamentos');
             const dados = await res.json();
-            const lista = document.getElementById('lista');
-            lista.innerHTML = '';
             
+            if (!dados || dados.length === 0) {
+                lista.innerHTML = "<p style='text-align:center;'>Nenhum orçamento encontrado.</p>";
+                return;
+            }
+
+            lista.innerHTML = '';
             [...dados].reverse().forEach(item => {
-                const respondido = item.status === 'respondido';
+                const isRespondido = item.status === 'respondido';
+                
                 lista.innerHTML += `
-                    <div class="card" style="${respondido ? 'border-left-color: #22c55e;' : ''}">
+                    <div class="card" style="${isRespondido ? 'border-left-color: #22c55e;' : ''}">
                         <div class="card-header">
-                            <b>CNPJ: ${item.cnpj}</b>
-                            <span>${respondido ? '✅ RESPONDIDO' : '⏳ PENDENTE'}</span>
+                            <div>
+                                <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
+                                <small style="color: #64748b">ID: ${item.id} | Data: ${item.data}</small>
+                            </div>
+                            <span class="status-badge ${isRespondido ? 'respondido' : 'pendente'}">
+                                ${isRespondido ? '✅ RESPONDIDO' : '⏳ PENDENTE'}
+                            </span>
                         </div>
-                        <p><b>Vendedor:</b> ${item.vendedor} | <b>Máquina:</b> ${item.nome_maquina} | <b>Material:</b> ${item.material}</p>
-                        <p><b>Medidas:</b> ${item.diametros !== " / " ? item.diametros : item.dimensoes_lamina} | <b>Espessura:</b> ${item.espessura}</p>
-                        
+
+                        <div class="info-section">
+                            <span class="section-label">👤 Identificação</span>
+                            <div class="data-grid">
+                                <div class="item"><b>Vendedor</b><span>${item.vendedor || '---'}</span></div>
+                                <div class="item"><b>Cliente/Cargo</b><span>${item.cliente_cargo || '---'}</span></div>
+                                <div class="item"><b>WhatsApp</b><span>${item.telefone || '---'}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <span class="section-label">⚙️ Equipamento e Material</span>
+                            <div class="data-grid">
+                                <div class="item"><b>Máquina</b><span>${item.nome_maquina || '---'}</span></div>
+                                <div class="item"><b>Cód. Original</b><span>${item.codigo_original || '---'}</span></div>
+                                <div class="item"><b>Material</b><span style="color:#e11d48; font-weight:bold;">${item.material || '---'}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <span class="section-label">🔧 Especificações Técnicas</span>
+                            <div class="data-grid">
+                                <div class="item"><b>Tipo</b><span>${(item.tipo_produto || '').toUpperCase()}</span></div>
+                                <div class="item"><b>Ângulo</b><span>${item.angulo_corte || '---'}</span></div>
+                                <div class="item"><b>Fio</b><span>${item.tipo_fio || '---'}</span></div>
+                                <div class="item"><b>Espessura</b><span>${item.espessura || '---'}</span></div>
+                                <div class="item"><b>Perfil</b><span>${item.perfil || '---'}</span></div>
+                                <div class="item"><b>Quantidade</b><span>${item.quantidade || '0'}</span></div>
+                            </div>
+                        </div>
+
                         <div class="caixa-resposta">
-                            <textarea id="res_${item.id}" style="width:100%; height:60px;">${item.resposta_vendedor || ''}</textarea>
-                            <button onclick="salvarResposta(${item.id})" style="margin-top:5px; cursor:pointer;">SALVAR RESPOSTA</button>
+                            <label style="font-weight:bold; color: #854d0e;">✍️ Resposta do Vendedor:</label>
+                            <textarea id="res_${item.id}" rows="3" placeholder="Digite aqui o orçamento para sair no PDF...">${item.resposta_vendedor || ''}</textarea>
+                            <button class="btn-salvar" onclick="salvarResposta(${item.id})">
+                                ${isRespondido ? 'ATUALIZAR RESPOSTA' : 'SALVAR E MARCAR COMO RESPONDIDO'}
+                            </button>
                         </div>
-                        <div style="margin-top:15px; display:flex; justify-content:space-between;">
-                            ${item.foto ? `<a href="${item.foto}" target="_blank">🖼️ Ver Foto</a>` : '<span></span>'}
-                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF</a>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            ${item.foto ? `<a href="${item.foto}" target="_blank" style="text-decoration:none;">🖼️ Ver Foto Anexada</a>` : '<span></span>'}
+                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF TÉCNICO</a>
                         </div>
-                    </div>`;
+                    </div>
+                `;
             });
-        } catch(e) { document.getElementById('lista').innerHTML = "Erro ao carregar."; }
+        } catch (e) {
+            lista.innerHTML = "<p style='color:red; text-align:center;'>Erro ao carregar dados do servidor.</p>";
+        }
     }
 
     async function salvarResposta(id) {
         const texto = document.getElementById(`res_${id}`).value;
-        await fetch(`/orcamento/${id}/resposta`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resposta: texto })
-        });
-        alert("Salvo!");
-        carregar();
+        try {
+            await fetch(`/orcamento/${id}/resposta`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resposta: texto })
+            });
+            alert("Resposta salva!");
+            carregar();
+        } catch (e) { alert("Erro ao salvar."); }
     }
 
     function filtrar() {
@@ -75,7 +151,9 @@
             card.style.display = card.innerText.toLowerCase().includes(termo) ? "block" : "none";
         });
     }
+
     carregar();
 </script>
+
 </body>
 </html>
