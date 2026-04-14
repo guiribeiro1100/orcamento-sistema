@@ -168,12 +168,14 @@ function render(listaDados) {
         let detalhes = '';
 
         if (item.tipo_produto === 'disco') {
-            detalhes = `
-                Diâmetro ext: ${item.diametro_externo || '-'}<br>
-                Diâmetro int: ${item.diametro_interno || '-'}<br>
-                Fio: ${item.tipo_fio || '-'}
-            `;
-        }
+    detalhes = `
+        Diâmetro ext: ${item.diametro_externo || '-'}<br>
+        Diâmetro int: ${item.diametro_interno || '-'}<br>
+        Tipo de fio: ${item.tipo_fio || '-'}<br>
+        Descrição do fio: ${item.tipo_fio_desc || '-'}<br>
+        Observação: ${item.obs_disco || '-'}
+    `;
+}
 
         if (item.tipo_produto === 'lamina') {
             detalhes = `

@@ -207,11 +207,13 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.text(`Tipo: ${item.tipo_produto}`);
 
-    if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
-        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
-        doc.text(`Fio: ${item.tipo_fio}`);
-    }
+  if (item.tipo_produto === 'disco') {
+    doc.text(`Diâmetro externo: ${item.diametro_externo}`);
+    doc.text(`Diâmetro interno: ${item.diametro_interno}`);
+    doc.text(`Tipo de fio: ${item.tipo_fio}`);
+    doc.text(`Descrição do fio: ${item.tipo_fio_desc || '-'}`);
+    doc.text(`Observação: ${item.obs_disco || '-'}`);
+}
 
     if (item.tipo_produto === 'lamina') {
         doc.text(`Largura: ${item.largura}`);
@@ -227,6 +229,22 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.text('Resposta:');
     doc.text(item.resposta || 'Ainda não respondido');
+
+if (item.foto) {
+    try {
+        doc.addPage();
+        doc.fontSize(14).text('Anexo:', { align: 'left' });
+        doc.moveDown();
+
+        doc.image(path.join(__dirname, item.foto), {
+            fit: [400, 400],
+            align: 'center'
+        });
+    } catch (e) {
+        console.log('Erro ao carregar imagem:', e);
+    }
+}
+
 
     doc.end();
 });
