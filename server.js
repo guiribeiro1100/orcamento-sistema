@@ -6,12 +6,13 @@ const fs = require('fs');
 const PDFDocument = require('pdfkit');
 
 const app = express();
-const uploadPath = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const uploadPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+
 app.use(express.static(__dirname));
 app.use('/uploads', express.static(uploadPath));
 
@@ -31,7 +32,7 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
     const novo = {
         id: Date.now(),
         empresa_local: b.empresa_local || '',
-        cnpj: b.cnpj || '',
+        cnpj: b.cnpj || '', // CNPJ ADICIONADO
         cliente_cargo: b.cliente_cargo || '',
         email: b.email || '',
         telefone: b.telefone || '',
@@ -42,7 +43,8 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         quantidade: b.quantidade || '',
         nome_maquina: b.nome_maquina || '',
         codigo_original: b.codigo_original || '',
-        // Dados Disco
+        
+        // DISCO
         diametro_externo: b.diametro_externo || '',
         diametro_interno: b.diametro_interno || '',
         espessura_disco: b.espessura_disco || '',
@@ -50,7 +52,9 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         angulo_corte: b.angulo_corte || '',
         comprimento_fio_disco: b.comprimento_fio_disco || '',
         perfil_corte_disco: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
-        // Dados Lâmina
+        obs_disco: b.obs_disco || '',
+
+        // LAMINA
         largura: b.largura || '',
         comprimento: b.comprimento || '',
         espessura: b.espessura || '',
@@ -58,7 +62,8 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         angulo_corte_lamina: b.angulo_corte_lamina || '',
         comprimento_fio_lamina: b.comprimento_fio_lamina || '',
         perfil_corte_lamina: b.perfil_corte_lamina === 'outro' ? b.perfil_outro_lamina : b.perfil_corte_lamina,
-        
+        obs_lamina: b.obs_lamina || '',
+
         medidas_usinagem: b.medidas_usinagem || '',
         foto: req.file ? '/uploads/' + req.file.filename : null,
         status: 'novo',
@@ -75,35 +80,36 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
 app.get('/orcamento/:id/pdf', (req, res) => {
     const item = readDB().find(o => o.id == req.params.id);
     if (!item) return res.status(404).send('Não encontrado');
-
     const doc = new PDFDocument({ margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
     doc.pipe(res);
 
     doc.fontSize(18).text('ORÇAMENTO TÉCNICO', { align: 'center' }).moveDown();
-    doc.fontSize(12).text(`Empresa: ${item.empresa_local} - CNPJ: ${item.cnpj}`);
-    doc.text(`Cliente: ${item.cliente_cargo} | Vendedor: ${item.vendedor}`).moveDown();
+    doc.fontSize(12).text(`Empresa: ${item.empresa_local} | CNPJ: ${item.cnpj}`);
+    doc.text(`Cliente: ${item.cliente_cargo} | Email: ${item.email}`).moveDown();
 
-    doc.fontSize(14).text('DETALHES DO PRODUTO', { underline: true });
-    doc.fontSize(12).text(`Tipo: ${item.tipo_produto.toUpperCase()} | Qtd: ${item.quantidade}`);
-    doc.text(`Material: ${item.material_final} | Máquina: ${item.nome_maquina}`).moveDown();
-
+    doc.fontSize(14).text('DADOS TÉCNICOS');
+    doc.fontSize(12).text(`Produto: ${item.tipo_produto} | Material: ${item.material_final}`);
+    
     if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetro Ext/Int: ${item.diametro_externo} / ${item.diametro_interno}`);
         doc.text(`Ângulo: ${item.angulo_corte} | Perfil: ${item.perfil_corte_disco}`);
-        doc.text(`Fio: ${item.tipo_fio_disco} (${item.comprimento_fio_disco})`);
+        doc.text(`Fio: ${item.tipo_fio_disco} | Comp. Fio: ${item.comprimento_fio_disco}`);
     } else if (item.tipo_produto === 'lamina') {
-        doc.text(`Dimensões: ${item.largura}x${item.comprimento}x${item.espessura}`);
-        doc.text(`Ângulo: ${item.angulo_corte_lamina} | Perfil: ${item.perfil_corte_lamina}`);
+        doc.text(`Fio: ${item.tipo_fio_lamina} | Perfil: ${item.perfil_corte_lamina}`);
     }
 
     if (item.foto) {
-        doc.addPage().image(path.join(__dirname, item.foto), { fit: [450, 450], align: 'center' });
+        try { doc.addPage().image(path.join(__dirname, item.foto), { fit: [400, 400] }); } catch(e){}
     }
     doc.end();
 });
 
 app.get('/orcamentos', (req, res) => res.json(readDB()));
-app.post('/responder/:id', (req, res) => { /* Mesma lógica anterior */ });
-app.post('/status/:id', (req, res) => { /* Mesma lógica anterior */ });
-app.listen(3000, () => console.log('Servidor rodando porta 3000'));
+app.post('/status/:id', (req, res) => {
+    const db = readDB();
+    const item = db.find(o => o.id == req.params.id);
+    if (item) { item.status = req.body.status; saveDB(db); }
+    res.json({ ok: true });
+});
+
+app.listen(3000, () => console.log('Porta 3000'));

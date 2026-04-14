@@ -1,57 +1,71 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Painel</title>
-    <style>
-        body { font-family: Arial; background: #eef2f7; padding: 20px; }
-        .card { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .bloco { background: #f9fafb; padding: 12px; border-radius: 6px; }
-        .detalhes { margin-top: 10px; background: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 4px solid #0284c7; }
-        .status { padding: 5px 10px; border-radius: 4px; color: white; float: right; }
-        .novo { background: #f59e0b; } .respondido { background: #10b981; }
-    </style>
+<meta charset="UTF-8">
+<title>Painel</title>
+<style>
+body { font-family: Arial; background: #eef2f7; padding: 20px; }
+.card { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.bloco { background: #f9fafb; padding: 12px; border-radius: 6px; }
+.detalhes { margin-top: 10px; background: #f3f4f6; padding: 10px; border-radius: 6px; }
+.status { padding: 6px 12px; border-radius: 6px; font-size: 12px; color: white; float: right; }
+.novo { background: #f59e0b; } .respondido { background: #10b981; }
+button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; color: white; margin-right: 5px; }
+.marcar { background: #10b981; } .voltar { background: #f59e0b; }
+.search { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; }
+</style>
 </head>
 <body>
 
-<h2>📊 Painel de Orçamentos</h2>
-<div id="lista"></div>
+<div style="max-width: 900px; margin: auto;">
+    <h2>📊 Painel de Orçamentos</h2>
+    <input id="busca" class="search" placeholder="🔎 Buscar cliente, empresa ou máquina">
+    <div id="lista"></div>
+</div>
 
 <script>
+let dados = [];
 async function carregar() {
     const res = await fetch('/orcamentos');
-    const dados = await res.json();
+    dados = await res.json();
+    render(dados.reverse());
+}
+
+function render(listaDados) {
     const lista = document.getElementById('lista');
     lista.innerHTML = '';
+    listaDados.forEach(item => {
+        let det = '';
+        if (item.tipo_produto === 'disco') {
+            det = `Fio: ${item.tipo_fio_disco} | Ângulo: ${item.angulo_corte} | Perfil: ${item.perfil_corte_disco}`;
+        } else if (item.tipo_produto === 'lamina') {
+            det = `Fio: ${item.tipo_fio_lamina} | Ângulo: ${item.angulo_corte_lamina} | Perfil: ${item.perfil_corte_lamina}`;
+        }
 
-    dados.reverse().forEach(item => {
         lista.innerHTML += `
             <div class="card">
                 <span class="status ${item.status}">${item.status}</span>
-                <h3>${item.empresa_local}</h3>
-                <p style="margin-top:-10px; color:#666;">CNPJ: ${item.cnpj || 'Não informado'}</p>
-                
+                <h3>${item.empresa_local} - CNPJ: ${item.cnpj || 'N/A'}</h3>
                 <div class="grid">
-                    <div class="bloco">
-                        <b>Contato:</b> ${item.cliente_cargo}<br>
-                        <b>Vendedor:</b> ${item.vendedor}
-                    </div>
-                    <div class="bloco">
-                        <b>Produto:</b> ${item.tipo_produto}<br>
-                        <b>Quantidade:</b> ${item.quantidade}
-                    </div>
+                    <div class="bloco"><b>Cliente:</b> ${item.cliente_cargo}<br><b>Vendedor:</b> ${item.vendedor}</div>
+                    <div class="bloco"><b>Produto:</b> ${item.tipo_produto}<br><b>Material:</b> ${item.material_final}</div>
                 </div>
-
-                <div class="detalhes">
-                    ${item.tipo_produto === 'disco' ? `Fio: ${item.tipo_fio_disco} | Perfil: ${item.perfil_corte_disco}` : `Lâmina: ${item.largura}x${item.comprimento}`}
+                <div class="detalhes"><b>Especificações:</b> ${det}</div>
+                <div style="margin-top:10px;">
+                    <button class="marcar" onclick="status(${item.id}, 'respondido')">Respondido</button>
+                    <button class="voltar" onclick="status(${item.id}, 'novo')">Novo</button>
+                    <a href="/orcamento/${item.id}/pdf" target="_blank">📄 PDF</a>
                 </div>
-
-                <a href="/orcamento/${item.id}/pdf" target="_blank" style="display:block; margin-top:10px;">📄 Abrir PDF</a>
-            </div>
-        `;
+            </div>`;
     });
 }
+
+async function status(id, s) {
+    await fetch('/status/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) });
+    carregar();
+}
+
 carregar();
 </script>
 </body>
