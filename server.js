@@ -1,207 +1,225 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<title>Painel</title>
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
 
-<style>
-body {
-    font-family: Arial;
-    background: #eef2f7;
-    padding: 20px;
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// =========================
+// UPLOAD
+// =========================
+
+const uploadPath = path.join(__dirname, 'uploads');
+
+if (!fs.existsSync(uploadPath)) {
+    fs.mkdirSync(uploadPath);
 }
 
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
+app.use(express.static(__dirname));
+app.use('/uploads', express.static(uploadPath));
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadPath),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+
+const upload = multer({ storage });
+
+// =========================
+// BANCO JSON
+// =========================
+
+const DB_FILE = path.join(__dirname, 'data.json');
+
+function readDB() {
+    if (!fs.existsSync(DB_FILE)) return [];
+    return JSON.parse(fs.readFileSync(DB_FILE));
 }
 
-.card {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+function saveDB(data) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+// =========================
+// ROTAS HTML
+// =========================
 
-.status {
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    color: white;
-}
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'form.html')));
+app.get('/painel.html', (req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
 
-.novo {
-    background: #f59e0b;
-}
+// =========================
+// CRIAR ORÇAMENTO
+// =========================
 
-.respondido {
-    background: #10b981;
-}
+app.post('/orcamento', upload.single('foto'), (req, res) => {
 
-.info {
-    margin-top: 10px;
-    line-height: 1.6;
-}
+    const db = readDB();
+    const b = req.body;
 
-.detalhes {
-    margin-top: 10px;
-    background: #f9fafb;
-    padding: 10px;
-    border-radius: 6px;
-}
+    const novo = {
+        id: Date.now(),
 
-img {
-    margin-top: 10px;
-    border-radius: 8px;
-    max-width: 150px;
-}
+        // CLIENTE
+        empresa_local: b.empresa_local || '',
+        cliente_cargo: b.cliente_cargo || '',
+        email: b.email || '',
+        telefone: b.telefone || '',
+        vendedor: b.vendedor || '',
 
-textarea {
-    width: 100%;
-    margin-top: 10px;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
+        // NOVOS CAMPOS
+        material_tipo: b.material_tipo || '',
+        quantidade: b.quantidade || '',
+        nome_maquina: b.nome_maquina || '',
+        codigo_original: b.codigo_original || '',
 
-.actions {
-    margin-top: 10px;
-    display: flex;
-    gap: 10px;
-}
+        // PRODUTO
+        tipo_produto: b.tipo_produto || '',
 
-button {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
+        // DISCO
+        diametro_externo: b.diametro_externo || '',
+        diametro_interno: b.diametro_interno || '',
+        tipo_fio: b.tipo_fio || '',
+        tipo_fio_desc: b.tipo_fio_desc || '',
+        obs_disco: b.obs_disco || '',
 
-.responder {
-    background: #2563eb;
-    color: white;
-}
+        // LÂMINA
+        largura: b.largura || '',
+        comprimento: b.comprimento || '',
+        espessura: b.espessura || '',
+        obs_lamina: b.obs_lamina || '',
 
-.pdf {
-    background: #111827;
-    color: white;
-    text-align: center;
-    padding: 10px;
-    border-radius: 6px;
-    text-decoration: none;
-    display: inline-block;
-    flex: 1;
-}
-</style>
-</head>
+        // USINAGEM
+        medidas_usinagem: b.medidas_usinagem || '',
 
-<body>
+        // APLICAÇÃO
+        aplicacao: b.aplicacao || '',
 
-<h2>📊 Painel de Orçamentos</h2>
+        // FOTO
+        foto: req.file ? '/uploads/' + req.file.filename : null,
 
-<div id="lista"></div>
+        // CONTROLE
+        status: 'novo',
+        historico: [],
+        data: new Date().toLocaleString()
+    };
 
-<script>
-async function carregar() {
-    const res = await fetch('/orcamentos');
-    const dados = await res.json();
+    db.push(novo);
+    saveDB(db);
 
-    const lista = document.getElementById('lista');
-    lista.innerHTML = '';
+    res.send({ ok: true });
+});
 
-    dados.reverse().forEach(item => {
+// =========================
+// LISTAR
+// =========================
 
-        let detalhes = '';
+app.get('/orcamentos', (req, res) => {
+    res.json(readDB());
+});
 
-        if (item.tipo_produto === 'disco') {
-            detalhes = `
-                🔵 Diâmetro ext: ${item.diametro_externo || '-'}<br>
-                🔵 Diâmetro int: ${item.diametro_interno || '-'}<br>
-                🔵 Fio: ${item.tipo_fio || '-'}
-            `;
-        }
+// =========================
+// RESPONDER
+// =========================
 
-        if (item.tipo_produto === 'lamina') {
-            detalhes = `
-                📏 Largura: ${item.largura || '-'}<br>
-                📏 Comprimento: ${item.comprimento || '-'}<br>
-                📏 Espessura: ${item.espessura || '-'}
-            `;
-        }
+app.post('/responder/:id', (req, res) => {
 
-        if (item.tipo_produto === 'usinagem') {
-            detalhes = `⚙️ Medidas: ${item.medidas_usinagem || '-'}`;
-        }
+    const db = readDB();
+    const item = db.find(o => o.id == req.params.id);
 
-        lista.innerHTML += `
-            <div class="card">
+    if (item) {
+        item.resposta = req.body.resposta;
+        item.status = 'respondido';
 
-                <div class="header">
-                    <h3>${item.cliente_cargo || 'Sem nome'} • ${item.tipo_produto}</h3>
-                    <span class="status ${item.status}">
-                        ${item.status}
-                    </span>
-                </div>
+        item.historico.push({
+            resposta: req.body.resposta,
+            data: new Date().toLocaleString()
+        });
 
-                <div class="info">
-                    <b>Empresa:</b> ${item.empresa_local || '-'} <br>
-                    <b>Telefone:</b> ${item.telefone || '-'} <br>
-                    <b>Email:</b> ${item.email || '-'} <br>
-                    <b>Vendedor:</b> ${item.vendedor || '-'} <br>
-                    <b>Aplicação:</b> ${item.aplicacao || '-'} <br>
+        saveDB(db);
+    }
 
-                    <b>Material:</b> ${item.material_tipo || '-'} <br>
-                    <b>Quantidade:</b> ${item.quantidade || '-'} <br>
-                    <b>Máquina:</b> ${item.nome_maquina || '-'} <br>
-                    <b>Código:</b> ${item.codigo_original || '-'} <br>
-                </div>
+    res.send({ ok: true });
+});
 
-                <div class="detalhes">
-                    ${detalhes}
-                </div>
+// =========================
+// PDF PROFISSIONAL
+// =========================
 
-                ${item.foto ? `<img src="${item.foto}">` : ''}
+app.get('/orcamento/:id/pdf', (req, res) => {
 
-                <textarea id="resposta-${item.id}" placeholder="Digite a resposta..."></textarea>
+    const db = readDB();
+    const item = db.find(o => o.id == req.params.id);
 
-                <div class="actions">
-                    <button class="responder" onclick="responder(${item.id})">
-                        Responder
-                    </button>
+    if (!item) return res.status(404).send('Não encontrado');
 
-                    <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
-                        📄 PDF
-                    </a>
-                </div>
+    const doc = new PDFDocument({ margin: 50 });
 
-            </div>
-        `;
-    });
-}
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
 
-async function responder(id) {
-    const texto = document.getElementById('resposta-' + id).value;
+    doc.pipe(res);
 
-    await fetch('/responder/' + id, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resposta: texto })
-    });
+    // TÍTULO
+    doc.fontSize(20).text('ORÇAMENTO TÉCNICO', { align: 'center' });
+    doc.moveDown();
 
-    alert('Resposta enviada!');
-    carregar();
-}
+    // CLIENTE
+    doc.fontSize(12);
+    doc.text(`Cliente: ${item.cliente_cargo}`);
+    doc.text(`Empresa: ${item.empresa_local}`);
+    doc.text(`Email: ${item.email}`);
+    doc.text(`Telefone: ${item.telefone}`);
+    doc.text(`Vendedor: ${item.vendedor}`);
+    doc.moveDown();
 
-carregar();
-</script>
+    // NOVOS CAMPOS
+    doc.text(`Material: ${item.material_tipo}`);
+    doc.text(`Quantidade: ${item.quantidade}`);
+    doc.text(`Máquina: ${item.nome_maquina}`);
+    doc.text(`Código original: ${item.codigo_original}`);
+    doc.moveDown();
 
-</body>
-</html>
+    // PRODUTO
+    doc.text(`Tipo: ${item.tipo_produto}`);
+    doc.moveDown();
+
+    if (item.tipo_produto === 'disco') {
+        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
+        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
+        doc.text(`Fio: ${item.tipo_fio}`);
+    }
+
+    if (item.tipo_produto === 'lamina') {
+        doc.text(`Largura: ${item.largura}`);
+        doc.text(`Comprimento: ${item.comprimento}`);
+        doc.text(`Espessura: ${item.espessura}`);
+    }
+
+    if (item.tipo_produto === 'usinagem') {
+        doc.text(`Medidas: ${item.medidas_usinagem}`);
+    }
+
+    doc.moveDown();
+
+    // RESPOSTA
+    doc.text('Resposta:');
+    doc.text(item.resposta || 'Ainda não respondido');
+
+    doc.end();
+});
+
+// =========================
+// START
+// =========================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log('Rodando na porta ' + PORT);
+});
