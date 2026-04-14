@@ -1,294 +1,58 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>Painel</title>
-
-<style>
-body {
-    font-family: Arial;
-    background: #eef2f7;
-    padding: 20px;
-}
-
-h2 {
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-/* 🔎 BUSCA */
-.topo {
-    max-width: 900px;
-    margin: auto;
-    margin-bottom: 20px;
-}
-
-.search {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-}
-
-/* 📦 CARD */
-.card {
-    max-width: 900px;
-    margin: auto;
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-
-/* HEADER */
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.status {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    color: white;
-}
-
-.novo { background: #f59e0b; }
-.respondido { background: #10b981; }
-
-/* GRID */
-.grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.bloco {
-    background: #f9fafb;
-    padding: 12px;
-    border-radius: 6px;
-    line-height: 1.6;
-}
-
-/* DETALHES */
-.detalhes {
-    margin-top: 10px;
-    background: #f3f4f6;
-    padding: 10px;
-    border-radius: 6px;
-}
-
-/* FOTO */
-img {
-    margin-top: 10px;
-    border-radius: 8px;
-    max-width: 150px;
-}
-
-/* RESPOSTA */
-textarea {
-    width: 100%;
-    margin-top: 10px;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-}
-
-/* BOTÕES */
-.actions {
-    margin-top: 10px;
-    display: flex;
-    gap: 10px;
-}
-
-button {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: white;
-}
-
-.responder { background: #2563eb; }
-.marcar { background: #10b981; }
-.voltar { background: #f59e0b; }
-
-/* PDF BONITO */
-.pdf {
-    margin-top: 10px;
-    display: inline-block;
-    background: #111827;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 13px;
-}
-
-/* HISTÓRICO */
-.historico {
-    margin-top: 10px;
-    font-size: 13px;
-    background: #f9fafb;
-    padding: 10px;
-    border-radius: 6px;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Painel</title>
+    <style>
+        body { font-family: Arial; background: #eef2f7; padding: 20px; }
+        .card { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .bloco { background: #f9fafb; padding: 12px; border-radius: 6px; }
+        .detalhes { margin-top: 10px; background: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 4px solid #0284c7; }
+        .status { padding: 5px 10px; border-radius: 4px; color: white; float: right; }
+        .novo { background: #f59e0b; } .respondido { background: #10b981; }
+    </style>
 </head>
-
 <body>
 
 <h2>📊 Painel de Orçamentos</h2>
-
-<div class="topo">
-    <input id="busca" class="search" placeholder="🔎 Buscar cliente, empresa ou máquina">
-</div>
-
 <div id="lista"></div>
 
 <script>
-let dados = [];
-
 async function carregar() {
     const res = await fetch('/orcamentos');
-    dados = await res.json();
-    render(dados.reverse());
-}
-
-function render(listaDados) {
+    const dados = await res.json();
     const lista = document.getElementById('lista');
     lista.innerHTML = '';
 
-    listaDados.forEach(item => {
-
-        let detalhes = '';
-
-        if (item.tipo_produto === 'disco') {
-    detalhes = `
-        Diâmetro ext: ${item.diametro_externo || '-'}<br>
-        Diâmetro int: ${item.diametro_interno || '-'}<br>
-        Tipo de fio: ${item.tipo_fio || '-'}<br>
-        Descrição do fio: ${item.tipo_fio_desc || '-'}<br>
-        Observação: ${item.obs_disco || '-'}
-    `;
-}
-
-        if (item.tipo_produto === 'lamina') {
-            detalhes = `
-                Largura: ${item.largura || '-'}<br>
-                Comprimento: ${item.comprimento || '-'}<br>
-                Espessura: ${item.espessura || '-'}
-            `;
-        }
-
-        if (item.tipo_produto === 'usinagem') {
-            detalhes = `Medidas: ${item.medidas_usinagem || '-'}`;
-        }
-
-        let historicoHTML = '';
-
-        if (item.historico && item.historico.length) {
-            historicoHTML = item.historico.map(h => `
-                <div>🕒 ${h.data}<br>💬 ${h.texto}</div><hr>
-            `).join('');
-        }
-
+    dados.reverse().forEach(item => {
         lista.innerHTML += `
             <div class="card">
-
-                <div class="header">
-                    <h3>${item.cliente_cargo || 'Sem nome'} • ${item.tipo_produto}</h3>
-                    <span class="status ${item.status}">
-                        ${item.status}
-                    </span>
-                </div>
-
+                <span class="status ${item.status}">${item.status}</span>
+                <h3>${item.empresa_local}</h3>
+                <p style="margin-top:-10px; color:#666;">CNPJ: ${item.cnpj || 'Não informado'}</p>
+                
                 <div class="grid">
                     <div class="bloco">
-                        <b>Empresa:</b> ${item.empresa_local || '-'}<br>
-                        <b>Telefone:</b> ${item.telefone || '-'}<br>
-                        <b>Email:</b> ${item.email || '-'}<br>
-                        <b>Vendedor:</b> ${item.vendedor || '-'}
+                        <b>Contato:</b> ${item.cliente_cargo}<br>
+                        <b>Vendedor:</b> ${item.vendedor}
                     </div>
-
                     <div class="bloco">
-                        <b>Material:</b> ${item.material_tipo || '-'}<br>
-                        <b>Quantidade:</b> ${item.quantidade || '-'}<br>
-                        <b>Máquina:</b> ${item.nome_maquina || '-'}<br>
-                        <b>Código:</b> ${item.codigo_original || '-'}
+                        <b>Produto:</b> ${item.tipo_produto}<br>
+                        <b>Quantidade:</b> ${item.quantidade}
                     </div>
                 </div>
 
                 <div class="detalhes">
-                    ${detalhes}
+                    ${item.tipo_produto === 'disco' ? `Fio: ${item.tipo_fio_disco} | Perfil: ${item.perfil_corte_disco}` : `Lâmina: ${item.largura}x${item.comprimento}`}
                 </div>
 
-                ${item.foto ? `<img src="${item.foto}">` : ''}
-
-                <textarea id="resposta-${item.id}" placeholder="Digite a resposta...">${item.resposta || ''}</textarea>
-
-                <div class="actions">
-                    <button class="responder" onclick="responder(${item.id})">Salvar</button>
-                    <button class="marcar" onclick="status(${item.id}, 'respondido')">Respondido</button>
-                    <button class="voltar" onclick="status(${item.id}, 'novo')">Novo</button>
-                </div>
-
-                <!-- 📄 PDF BONITO E ORGANIZADO -->
-                <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
-                    📄 Gerar PDF
-                </a>
-
-                <div class="historico">
-                    <b>Histórico:</b><br>
-                    ${historicoHTML || 'Sem histórico'}
-                </div>
-
+                <a href="/orcamento/${item.id}/pdf" target="_blank" style="display:block; margin-top:10px;">📄 Abrir PDF</a>
             </div>
         `;
     });
 }
-
-// 🔎 BUSCA
-document.getElementById('busca').addEventListener('input', (e) => {
-    const v = e.target.value.toLowerCase();
-
-    const filtrado = dados.filter(i =>
-        (i.cliente_cargo || '').toLowerCase().includes(v) ||
-        (i.empresa_local || '').toLowerCase().includes(v) ||
-        (i.nome_maquina || '').toLowerCase().includes(v)
-    );
-
-    render(filtrado);
-});
-
-async function responder(id) {
-    const texto = document.getElementById('resposta-' + id).value;
-
-    await fetch('/responder/' + id, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resposta: texto })
-    });
-
-    carregar();
-}
-
-async function status(id, s) {
-    await fetch('/status/' + id, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: s })
-    });
-
-    carregar();
-}
-
 carregar();
 </script>
-
 </body>
 </html>
