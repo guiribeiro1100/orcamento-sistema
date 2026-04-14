@@ -70,20 +70,18 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
     const novo = {
         id: Date.now(),
 
-        // CLIENTE
         empresa_local: b.empresa_local || '',
         cliente_cargo: b.cliente_cargo || '',
         email: b.email || '',
         telefone: b.telefone || '',
         vendedor: b.vendedor || '',
 
-        // MATERIAL / APLICAÇÃO (originais)
         material_tipo: b.material_tipo || '',
         material_outro: b.material_outro || '',
         aplicacao: b.aplicacao || '',
         aplicacao_outro: b.aplicacao_outro || '',
 
-        // 🔥 NORMALIZADO (USO FINAL)
+        // 🔥 VALOR FINAL (CORRETO)
         material_final: b.material_tipo === 'outro'
             ? b.material_outro
             : b.material_tipo,
@@ -92,13 +90,11 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
             ? b.aplicacao_outro
             : b.aplicacao,
 
-        // PRODUTO
         tipo_produto: b.tipo_produto || '',
         quantidade: b.quantidade || '',
         nome_maquina: b.nome_maquina || '',
         codigo_original: b.codigo_original || '',
 
-        // DISCO
         diametro_externo: b.diametro_externo || '',
         diametro_interno: b.diametro_interno || '',
         espessura_disco: b.espessura_disco || '',
@@ -106,19 +102,15 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         tipo_fio_desc: b.tipo_fio_desc || '',
         obs_disco: b.obs_disco || '',
 
-        // LÂMINA
         largura: b.largura || '',
         comprimento: b.comprimento || '',
         espessura: b.espessura || '',
         obs_lamina: b.obs_lamina || '',
 
-        // USINAGEM
         medidas_usinagem: b.medidas_usinagem || '',
 
-        // FOTO
         foto: req.file ? '/uploads/' + req.file.filename : null,
 
-        // CONTROLE
         status: 'novo',
         resposta: '',
         historico: [],
@@ -132,7 +124,7 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
 });
 
 // =========================
-// LISTAR ORÇAMENTOS
+// LISTAR
 // =========================
 
 app.get('/orcamentos', (req, res) => {
@@ -149,7 +141,6 @@ app.post('/responder/:id', (req, res) => {
     const item = db.find(o => o.id == req.params.id);
 
     if (item) {
-
         if (!item.historico) item.historico = [];
 
         item.resposta = req.body.resposta || '';
@@ -201,11 +192,9 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.pipe(res);
 
-    // HEADER
     doc.fontSize(18).text('ORÇAMENTO TÉCNICO', { align: 'center' });
     doc.moveDown();
 
-    // CLIENTE
     doc.fontSize(12);
     doc.text(`Cliente: ${item.cliente_cargo}`);
     doc.text(`Empresa: ${item.empresa_local}`);
@@ -214,10 +203,10 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Vendedor: ${item.vendedor}`);
     doc.moveDown();
 
-    // DADOS TÉCNICOS
     doc.fontSize(14).text('DADOS TÉCNICOS');
     doc.fontSize(12);
 
+    // 🔥 USANDO FINAL (CORRETO)
     doc.text(`Material: ${item.material_final}`);
     doc.text(`Aplicação: ${item.aplicacao_final}`);
 
@@ -227,7 +216,6 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Tipo: ${item.tipo_produto}`);
     doc.moveDown();
 
-    // DISCO
     if (item.tipo_produto === 'disco') {
         doc.fontSize(14).text('DISCO');
         doc.fontSize(12);
@@ -241,7 +229,6 @@ app.get('/orcamento/:id/pdf', (req, res) => {
         doc.moveDown();
     }
 
-    // LÂMINA
     if (item.tipo_produto === 'lamina') {
         doc.fontSize(14).text('LÂMINA');
         doc.fontSize(12);
@@ -253,7 +240,6 @@ app.get('/orcamento/:id/pdf', (req, res) => {
         doc.moveDown();
     }
 
-    // USINAGEM
     if (item.tipo_produto === 'usinagem') {
         doc.fontSize(14).text('USINAGEM');
         doc.fontSize(12);
@@ -262,13 +248,9 @@ app.get('/orcamento/:id/pdf', (req, res) => {
         doc.moveDown();
     }
 
-    // RESPOSTA
-    doc.fontSize(12);
     doc.text('Resposta:');
     doc.text(item.resposta || 'Ainda não respondido');
-    doc.moveDown();
 
-    // FOTO
     if (item.foto) {
         try {
             doc.addPage();
@@ -276,11 +258,10 @@ app.get('/orcamento/:id/pdf', (req, res) => {
             doc.moveDown();
 
             doc.image(path.join(__dirname, item.foto), {
-                fit: [400, 400],
-                align: 'center'
+                fit: [400, 400]
             });
         } catch (e) {
-            console.log('Erro ao carregar imagem:', e);
+            console.log(e);
         }
     }
 
@@ -288,11 +269,9 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 });
 
 // =========================
-// START SERVER
+// START
 // =========================
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log('Rodando na porta ' + PORT);
+app.listen(3000, () => {
+    console.log('Rodando na porta 3000');
 });
