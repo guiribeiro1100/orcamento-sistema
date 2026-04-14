@@ -39,7 +39,7 @@ const DB_FILE = path.join(__dirname, 'data.json');
 
 function readDB() {
     if (!fs.existsSync(DB_FILE)) return [];
-    return JSON.parse(fs.readFileSync(DB_FILE));
+    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 }
 
 function saveDB(data) {
@@ -50,8 +50,13 @@ function saveDB(data) {
 // ROTAS HTML
 // =========================
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'form.html')));
-app.get('/painel.html', (req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'form.html'));
+});
+
+app.get('/painel.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'painel.html'));
+});
 
 // =========================
 // CRIAR ORÇAMENTO
@@ -72,28 +77,25 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
         telefone: b.telefone || '',
         vendedor: b.vendedor || '',
 
-material_outro: b.material_outro || '',
-aplicacao_outro: b.aplicacao_outro || '',
-espessura_disco: b.espessura_disco || '',
-
-        // NOVOS CAMPOS
+        // MATERIAL / APLICAÇÃO
         material_tipo: b.material_tipo || '',
+        material_outro: b.material_outro || '',
+        aplicacao: b.aplicacao || '',
+        aplicacao_outro: b.aplicacao_outro || '',
+
+        // PRODUTO
+        tipo_produto: b.tipo_produto || '',
         quantidade: b.quantidade || '',
         nome_maquina: b.nome_maquina || '',
         codigo_original: b.codigo_original || '',
 
-        // PRODUTO
-        tipo_produto: b.tipo_produto || '',
-
         // DISCO
-      detalhes = `
-    Diâmetro ext: ${item.diametro_externo || '-'}<br>
-    Diâmetro int: ${item.diametro_interno || '-'}<br>
-    Espessura: ${item.espessura_disco || '-'}<br>
-    Tipo de fio: ${item.tipo_fio || '-'}<br>
-    Descrição do fio: ${item.tipo_fio_desc || '-'}<br>
-    Observação: ${item.obs_disco || '-'}
-`;
+        diametro_externo: b.diametro_externo || '',
+        diametro_interno: b.diametro_interno || '',
+        espessura_disco: b.espessura_disco || '',
+        tipo_fio: b.tipo_fio || '',
+        tipo_fio_desc: b.tipo_fio_desc || '',
+        obs_disco: b.obs_disco || '',
 
         // LÂMINA
         largura: b.largura || '',
@@ -103,9 +105,6 @@ espessura_disco: b.espessura_disco || '',
 
         // USINAGEM
         medidas_usinagem: b.medidas_usinagem || '',
-
-        // APLICAÇÃO
-        aplicacao: b.aplicacao || '',
 
         // FOTO
         foto: req.file ? '/uploads/' + req.file.filename : null,
@@ -120,11 +119,11 @@ espessura_disco: b.espessura_disco || '',
     db.push(novo);
     saveDB(db);
 
-    res.send({ ok: true });
+    res.json({ ok: true });
 });
 
 // =========================
-// LISTAR
+// LISTAR ORÇAMENTOS
 // =========================
 
 app.get('/orcamentos', (req, res) => {
@@ -132,7 +131,7 @@ app.get('/orcamentos', (req, res) => {
 });
 
 // =========================
-// RESPONDER
+// RESPONDER ORÇAMENTO
 // =========================
 
 app.post('/responder/:id', (req, res) => {
@@ -141,27 +140,22 @@ app.post('/responder/:id', (req, res) => {
     const item = db.find(o => o.id == req.params.id);
 
     if (item) {
-
-        // salva resposta atual
-        item.resposta = req.body.resposta;
+        item.resposta = req.body.resposta || '';
         item.status = 'respondido';
 
-        // 🔥 HISTÓRICO FUNCIONANDO
-        if (!item.historico) item.historico = [];
-
         item.historico.push({
-            texto: req.body.resposta,
+            texto: req.body.resposta || '',
             data: new Date().toLocaleString()
         });
 
         saveDB(db);
     }
 
-    res.send({ ok: true });
+    res.json({ ok: true });
 });
 
 // =========================
-// STATUS
+// ALTERAR STATUS
 // =========================
 
 app.post('/status/:id', (req, res) => {
@@ -174,11 +168,11 @@ app.post('/status/:id', (req, res) => {
         saveDB(db);
     }
 
-    res.send({ ok: true });
+    res.json({ ok: true });
 });
 
 // =========================
-// PDF
+// GERAR PDF
 // =========================
 
 app.get('/orcamento/:id/pdf', (req, res) => {
@@ -195,9 +189,11 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.pipe(res);
 
+    // HEADER
     doc.fontSize(18).text('ORÇAMENTO TÉCNICO', { align: 'center' });
     doc.moveDown();
 
+    // CLIENTE
     doc.fontSize(12);
     doc.text(`Cliente: ${item.cliente_cargo}`);
     doc.text(`Empresa: ${item.empresa_local}`);
@@ -205,108 +201,91 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Telefone: ${item.telefone}`);
     doc.text(`Vendedor: ${item.vendedor}`);
     doc.moveDown();
-doc.moveDown();
 
-doc.fontSize(14).text('DADOS TÉCNICOS');
-doc.fontSize(12);
+    // DADOS TÉCNICOS
+    doc.fontSize(14).text('DADOS TÉCNICOS');
+    doc.fontSize(12);
 
-doc.text(`Material: ${
-    item.material_tipo === 'outro'
-        ? item.material_outro
-        : item.material_tipo
-}`);
+    doc.text(`Material: ${
+        item.material_tipo === 'outro'
+            ? item.material_outro
+            : item.material_tipo
+    }`);
 
-doc.text(`Aplicação: ${
-    item.aplicacao === 'outro'
-        ? item.aplicacao_outro
-        : item.aplicacao
-}`);
-    doc.text(`Material: ${item.material_tipo}`);
+    doc.text(`Aplicação: ${
+        item.aplicacao === 'outro'
+            ? item.aplicacao_outro
+            : item.aplicacao
+    }`);
+
     doc.text(`Quantidade: ${item.quantidade}`);
     doc.text(`Máquina: ${item.nome_maquina}`);
     doc.text(`Código: ${item.codigo_original}`);
-    doc.moveDown();
-
     doc.text(`Tipo: ${item.tipo_produto}`);
-
- if (item.tipo_produto === 'disco') {
     doc.moveDown();
 
-    doc.fontSize(14).text('DISCO');
-    doc.fontSize(12);
+    // DISCO
+    if (item.tipo_produto === 'disco') {
+        doc.fontSize(14).text('DISCO');
+        doc.fontSize(12);
 
-    doc.text(`Diâmetro externo: ${item.diametro_externo || '-'}`);
-    doc.text(`Diâmetro interno: ${item.diametro_interno || '-'}`);
-    doc.text(`Espessura: ${item.espessura_disco || '-'}`);
-    doc.text(`Tipo de fio: ${item.tipo_fio || '-'}`);
-    doc.text(`Descrição do fio: ${item.tipo_fio_desc || '-'}`);
-    doc.text(`Observação: ${item.obs_disco || '-'}`);
-}
+        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
+        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
+        doc.text(`Espessura: ${item.espessura_disco}`);
+        doc.text(`Tipo de fio: ${item.tipo_fio}`);
+        doc.text(`Descrição do fio: ${item.tipo_fio_desc}`);
+        doc.text(`Observação: ${item.obs_disco}`);
+        doc.moveDown();
+    }
 
+    // LÂMINA
     if (item.tipo_produto === 'lamina') {
+        doc.fontSize(14).text('LÂMINA');
+        doc.fontSize(12);
+
         doc.text(`Largura: ${item.largura}`);
         doc.text(`Comprimento: ${item.comprimento}`);
         doc.text(`Espessura: ${item.espessura}`);
+        doc.text(`Observação: ${item.obs_lamina}`);
+        doc.moveDown();
     }
 
+    // USINAGEM
     if (item.tipo_produto === 'usinagem') {
+        doc.fontSize(14).text('USINAGEM');
+        doc.fontSize(12);
+
         doc.text(`Medidas: ${item.medidas_usinagem}`);
+        doc.moveDown();
     }
 
-    doc.moveDown();
-
+    // RESPOSTA
+    doc.fontSize(12);
     doc.text('Resposta:');
     doc.text(item.resposta || 'Ainda não respondido');
+    doc.moveDown();
 
-if (item.foto) {
-    try {
-        doc.addPage();
-        doc.fontSize(14).text('Anexo:', { align: 'left' });
-        doc.moveDown();
+    // FOTO
+    if (item.foto) {
+        try {
+            doc.addPage();
+            doc.fontSize(14).text('Anexo');
+            doc.moveDown();
 
-        doc.image(path.join(__dirname, item.foto), {
-            fit: [400, 400],
-            align: 'center'
-        });
-    } catch (e) {
-        console.log('Erro ao carregar imagem:', e);
+            doc.image(path.join(__dirname, item.foto), {
+                fit: [400, 400],
+                align: 'center'
+            });
+        } catch (e) {
+            console.log('Erro ao carregar imagem:', e);
+        }
     }
-}
 
-const material = document.getElementById('material_tipo');
-const materialOutro = document.getElementById('material_outro');
-
-material.addEventListener('change', () => {
-    materialOutro.classList.toggle('hidden', material.value !== 'outro');
-});
-
-const aplicacao = document.getElementById('aplicacao');
-const aplicacaoOutro = document.getElementById('aplicacao_outro');
-
-aplicacao.addEventListener('change', () => {
-    aplicacaoOutro.classList.toggle('hidden', aplicacao.value !== 'outro');
-});
-if (item.foto) {
-    try {
-        doc.addPage();
-
-        doc.fontSize(14).text('Anexo');
-        doc.moveDown();
-
-        doc.image(path.join(__dirname, item.foto), {
-            fit: [400, 400],
-            align: 'center'
-        });
-
-    } catch (e) {
-        console.log('Erro ao carregar imagem:', e);
-    }
-}
     doc.end();
 });
 
 // =========================
-// START
+// START SERVER
 // =========================
 
 const PORT = process.env.PORT || 3000;
