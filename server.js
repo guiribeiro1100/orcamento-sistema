@@ -134,11 +134,16 @@ app.post('/responder/:id', (req, res) => {
     const item = db.find(o => o.id == req.params.id);
 
     if (item) {
+
+        // salva resposta atual
         item.resposta = req.body.resposta;
         item.status = 'respondido';
 
+        // 🔥 HISTÓRICO FUNCIONANDO
+        if (!item.historico) item.historico = [];
+
         item.historico.push({
-            resposta: req.body.resposta,
+            texto: req.body.resposta,
             data: new Date().toLocaleString()
         });
 
