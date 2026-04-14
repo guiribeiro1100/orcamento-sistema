@@ -75,3 +75,84 @@ app.get('/orcamentos', (req, res) => res.json(readDB()));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor ativo na porta ${PORT}`));
+
+app.post('/orcamento', upload.single('foto'), (req, res) => {
+    const db = readDB();
+    const b = req.body;
+    const novo = {
+        id: Date.now(),
+        cnpj: b.cnpj || '',
+        cliente_cargo: b.cliente_cargo || '',
+        vendedor: b.vendedor || '',
+        email: b.email || '',
+        telefone: b.telefone || '',
+        tipo_produto: b.tipo_produto || '',
+        nome_maquina: b.nome_maquina || '',
+        codigo_original: b.codigo_original || '',
+        angulo_corte: b.angulo_corte || b.angulo_corte_lamina || '',
+        tipo_fio: b.tipo_fio || '',
+        diametros: `${b.diametro_externo || ''} / ${b.diametro_interno || ''}`,
+        espessura: b.espessura_disco || b.espessura_lamina || '',
+        perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
+        dimensoes_lamina: `${b.largura || ''} x ${b.comprimento || ''}`,
+        medidas_usinagem: b.medidas_usinagem || '',
+        aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
+        quantidade: b.quantidade || '',
+        foto: req.file ? '/uploads/' + req.file.filename : null,
+        data: new Date().toLocaleString()
+    };
+    db.push(novo);
+    saveDB(db);
+    res.json({ ok: true });
+});
+
+// ... (mantenha todo o início igual)
+
+// ROTA PARA SALVAR A RESPOSTA (Novo!)
+app.post('/orcamento/:id/resposta', (req, res) => {
+    const db = readDB();
+    const index = db.findIndex(o => o.id == req.params.id);
+    if (index !== -1) {
+        db[index].resposta_vendedor = req.body.resposta; // Salva a sua resposta
+        saveDB(db);
+        res.json({ ok: true });
+    } else {
+        res.status(404).send('Não encontrado');
+    }
+});
+
+// ROTA DO PDF (Atualizada para mostrar a Resposta)
+app.get('/orcamento/:id/pdf', (req, res) => {
+    const item = readDB().find(o => o.id == req.params.id);
+    if (!item) return res.status(404).send('Não encontrado');
+
+    const doc = new PDFDocument({ margin: 30 });
+    res.setHeader('Content-Type', 'application/pdf');
+    doc.pipe(res);
+
+    // Cabeçalho e Dados (Mantendo tudo)
+    doc.fontSize(20).text('ORÇAMENTO TÉCNICO', { align: 'center' }).moveDown();
+    doc.fontSize(12).text(`CNPJ: ${item.cnpj} | Data: ${item.data}`);
+    doc.text(`Cliente: ${item.cliente_cargo} | Vendedor: ${item.vendedor}`).moveDown();
+    
+    doc.fontSize(14).font('Helvetica-Bold').text('ESPECIFICAÇÕES:');
+    doc.fontSize(12).font('Helvetica').text(`Produto: ${item.tipo_produto.toUpperCase()}`);
+    doc.text(`Ângulo: ${item.angulo_corte} | Fio: ${item.tipo_fio}`);
+    doc.text(`Medidas: ${item.diametros !== " / " ? item.diametros : item.dimensoes_lamina}`);
+    doc.text(`Quantidade: ${item.quantidade}`).moveDown();
+
+    // SEÇÃO DA RESPOSTA NO PDF (O que você pediu)
+    if (item.resposta_vendedor) {
+        doc.rect(30, doc.y, 530, 20).fill('#e2e8f0');
+        doc.fillColor('#1e3a8a').font('Helvetica-Bold').text('RESPOSTA DO ORÇAMENTO:', 35, doc.y - 15);
+        doc.fillColor('#000').font('Helvetica').text(item.resposta_vendedor, 35, doc.y + 10).moveDown();
+    }
+
+    if (item.foto) {
+        const imgPath = path.join(__dirname, item.foto);
+        if (fs.existsSync(imgPath)) {
+            doc.addPage().text('FOTO DE REFERÊNCIA:').image(imgPath, { fit: [500, 400] });
+        }
+    }
+    doc.end();
+});

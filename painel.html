@@ -54,6 +54,39 @@
                             <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
                             <small style="color: #94a3b8">${item.data}</small>
                         </div>
+`
+<div class="card">
+    <div style="margin-top:15px; background: #fefce8; padding: 15px; border-radius: 8px; border: 1px solid #fef08a;">
+        <label style="font-weight:bold; color: #854d0e; display:block; margin-bottom:5px;">✍️ Resposta / Observações do Vendedor:</label>
+        <textarea id="res_${item.id}" style="width:100%; border:1px solid #ca8a04; border-radius:5px; padding:8px;" rows="3" placeholder="Digite aqui o valor ou detalhes do orçamento...">${item.resposta_vendedor || ''}</textarea>
+        <button onclick="salvarResposta(${item.id})" style="margin-top:10px; background:#ca8a04; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">
+            SALVAR RESPOSTA
+        </button>
+    </div>
+
+    <div style="margin-top:15px; display:flex; justify-content:space-between;">
+        <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF COM RESPOSTA</a>
+    </div>
+</div>
+`
+
+// FUNÇÃO PARA SALVAR (Coloque no final do <script> do painel)
+async function salvarResposta(id) {
+    const texto = document.getElementById(`res_${id}`).value;
+    const res = await fetch(`/orcamento/${id}/resposta`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resposta: texto })
+    });
+    if (res.ok) alert('Resposta salva! Agora aparecerá no PDF.');
+}
+
+
+
+
+
+
+
 
                         <div class="info-section">
                             <span class="section-label">👤 Contato e Venda</span>
