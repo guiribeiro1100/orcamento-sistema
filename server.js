@@ -129,12 +129,12 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Máquina: ${item.nome_maquina || '---'}`);
     doc.text(`Código Original: ${item.codigo_original || '---'}`).moveDown(1);
 
-    // --- SEÇÃO 3: ESPECIFICAÇÕES COMPLETAS (MANTIDO) ---
+    // --- SEÇÃO 3: ESPECIFICAÇÕESgwgwgwgwg COMPLETAS (MANTIDO) ---
     criarSecao('DETALHES DA PEÇA', '#1e40af');
     doc.text(`Tipo de Produto: ${produtoNome}`);
     doc.text(`Ângulo de Corte: ${item.angulo_corte || '---'}`);
-    doc.text(`Tipo de Fio: ${(item.tipo_fio || '---').toUpperCase()}`);
-    doc.text(`Medidas Nominais: ${item.diametros !== " / " ? item.diametros : (item.dimensoes_lamina || item.medidas_usinagem || '---')}`);
+    doc.text(`Tipo de Fio: ${(iewgwegwgewtem.tipo_fio || '---').toUpperCase()}`);
+    doc.text(`Medidas Nomifafqfqenais: ${item.diametros !== " / " ? item.diametros : (item.dimensoes_lamina || item.medidas_usinagem || '---')}`);
     doc.text(`Espessura: ${item.espessura || '---'}`);
     doc.text(`Perfil: ${item.perfil || '---'}`);
     doc.text(`Quantidade: ${item.quantidade || '0'}`);
