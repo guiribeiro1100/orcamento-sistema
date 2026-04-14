@@ -151,15 +151,17 @@ async function carregar() {
                     </span>
                 </div>
 
-material_tipo: b.material_tipo || '',
-quantidade: b.quantidade || '',
-nome_maquina: b.nome_maquina || '',
-codigo_original: b.codigo_original || '',
-
                 <div class="info">
                     <b>Empresa:</b> ${item.empresa_local || '-'} <br>
                     <b>Telefone:</b> ${item.telefone || '-'} <br>
-                    <b>Aplicação:</b> ${item.aplicacao || '-'}
+                    <b>Email:</b> ${item.email || '-'} <br>
+                    <b>Vendedor:</b> ${item.vendedor || '-'} <br>
+                    <b>Aplicação:</b> ${item.aplicacao || '-'} <br>
+
+                    <b>Material:</b> ${item.material_tipo || '-'} <br>
+                    <b>Quantidade:</b> ${item.quantidade || '-'} <br>
+                    <b>Máquina:</b> ${item.nome_maquina || '-'} <br>
+                    <b>Código:</b> ${item.codigo_original || '-'} <br>
                 </div>
 
                 <div class="detalhes">
@@ -176,7 +178,7 @@ codigo_original: b.codigo_original || '',
                     </button>
 
                     <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
-                        PDF
+                        📄 PDF
                     </a>
                 </div>
 
