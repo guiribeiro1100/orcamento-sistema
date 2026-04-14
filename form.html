@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <title>Solicitar Orçamento</title>
 <style>
-body { font-family: Arial; background: #f3f4f6; padding: 20px; }
-.container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 10px; }
-h3 { margin-top: 25px; color: #2563eb; }
-input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-.hidden { display: none; }
-button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; }
-#mensagem_sucesso { text-align: center; padding: 40px; }
+    body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 20px; }
+    .container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h3 { margin-top: 25px; color: #2563eb; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+    input, select, textarea { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    .hidden { display: none; }
+    button { width: 100%; padding: 15px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    #mensagem_sucesso { text-align: center; padding: 40px; }
 </style>
 </head>
 <body>
@@ -18,149 +18,112 @@ button { width: 100%; padding: 12px; background: #2563eb; color: white; border: 
 <div class="container">
     <div id="mensagem_sucesso" class="hidden">
         <h2>✅ Pedido Enviado!</h2>
-        <p>Recebemos sua solicitação. Em breve entraremos em contato.</p>
+        <p>Sua solicitação foi processada com sucesso.</p>
         <button onclick="window.location.reload()">Novo Orçamento</button>
     </div>
 
     <div id="form_container">
         <h2>Solicitar Orçamento</h2>
-        <form id="orcamentoForm" action="/orcamento" method="POST" enctype="multipart/form-data">
+        <form id="orcamentoForm">
 
-        <h3>👤 Dados do Cliente</h3>
-        <input type="text" name="empresa_local" placeholder="Empresa">
-        <input type="text" name="cnpj" placeholder="CNPJ"> <input type="text" name="cliente_cargo" placeholder="Cliente" required>
-        <input type="email" name="email" placeholder="Email">
-        <input type="text" name="telefone" placeholder="Telefone">
-        <input type="text" name="vendedor" placeholder="Vendedor">
+            <h3>👤 Identificação</h3>
+            <input type="text" name="cnpj" placeholder="CNPJ" required> <input type="text" name="cliente_cargo" placeholder="Cliente / Cargo" required>
+            <input type="email" name="email" placeholder="Email">
+            <input type="text" name="telefone" placeholder="Telefone">
+            <input type="text" name="vendedor" placeholder="Vendedor">
 
-        <h3>🧱 Material</h3>
-        <select name="material_tipo" id="material_tipo">
-            <option value="">Selecione</option>
-            <option value="m9">M9</option>
-            <option value="m3">M3</option>
-            <option value="outro">Outro</option>
-        </select>
-        <textarea id="material_outro" name="material_outro" placeholder="Descreva o material" class="hidden"></textarea>
-
-        <h3>⚙️ Especificação</h3>
-        <select name="tipo_produto" id="tipo_produto" required>
-            <option value="">Selecione</option>
-            <option value="disco">Disco</option>
-            <option value="lamina">Lâminas</option>
-            <option value="usinagem">Peças de usinagem</option>
-        </select>
-        <input type="text" name="nome_maquina" placeholder="Nome da máquina">
-        <input type="text" name="codigo_original" placeholder="Código da peça original">
-
-        <div id="disco" class="hidden">
-            <input type="text" name="diametro_externo" placeholder="Diâmetro externo">
-            <input type="text" name="diametro_interno" placeholder="Diâmetro interno">
-            <input type="text" name="espessura_disco" placeholder="Espessura">
-            <select name="tipo_fio_disco">
-                <option value="">Tipo de fio</option>
-                <option value="fio_unico">Fio único</option>
-                <option value="fio_duplo">Fio duplo</option>
+            <h3>⚙️ Especificação</h3>
+            <select name="tipo_produto" id="tipo_produto" required>
+                <option value="">Selecione o Produto</option>
+                <option value="disco">Disco</option>
+                <option value="lamina">Lâminas</option>
+                <option value="usinagem">Peças de usinagem</option>
             </select>
-            <input type="text" name="angulo_corte" placeholder="Ângulo de corte">
-            <input type="text" name="comprimento_fio_disco" placeholder="Comprimento do fio">
-            
-            <select name="perfil_corte_disco" id="perfil_corte_disco">
-                <option value="">Perfil de corte</option>
-                <option value="liso">Liso</option>
-                <option value="fendas">Fendas</option>
-                <option value="dentes_serra">Dentes de serra</option>
-                <option value="ondulado_microserrilhado">Ondulado microserrilhado</option>
-                <option value="outro">Outros</option>
+
+            <input type="text" name="nome_maquina" placeholder="Nome da máquina">
+            <input type="text" name="codigo_original" placeholder="Código da peça original">
+
+            <div id="disco" class="hidden">
+                <input type="text" name="diametro_externo" placeholder="Diâmetro externo">
+                <input type="text" name="diametro_interno" placeholder="Diâmetro interno">
+                <input type="text" name="espessura_disco" placeholder="Espessura">
+                <input type="text" name="angulo_corte" placeholder="Ângulo de corte"> <input type="text" name="comprimento_fio_disco" placeholder="Comprimento do fio">
+
+                <select name="perfil_corte_disco" id="perfil_corte_disco">
+                    <option value="">Perfil de corte</option>
+                    <option value="liso">Liso</option>
+                    <option value="fendas">Fendas</option>
+                    <option value="dentes_serra">Dentes de serra</option>
+                    <option value="ondulado_microserrilhado">Ondulado microserrilhado</option>
+                    <option value="outro">Outros</option>
+                </select>
+                <textarea id="perfil_outro_disco" name="perfil_outro_disco" placeholder="Descreva o perfil" class="hidden"></textarea>
+                <textarea name="obs_disco" placeholder="Observação adicional"></textarea>
+            </div>
+
+            <div id="lamina" class="hidden">
+                <input type="text" name="largura" placeholder="Largura">
+                <input type="text" name="comprimento" placeholder="Comprimento">
+                <input type="text" name="espessura" placeholder="Espessura">
+                <input type="text" name="angulo_corte_lamina" placeholder="Ângulo de corte"> <input type="text" name="comprimento_fio_lamina" placeholder="Comprimento do fio">
+                <textarea name="obs_lamina" placeholder="Observação adicional"></textarea>
+            </div>
+
+            <div id="usinagem" class="hidden">
+                <textarea name="medidas_usinagem" placeholder="Medidas da usinagem"></textarea>
+            </div>
+
+            <h3>🏭 Aplicação</h3>
+            <select name="aplicacao" id="aplicacao">
+                <option value="">Selecione a Aplicação</option>
+                <option value="aves">Aves</option>
+                <option value="bovinos">Bovinos</option>
+                <option value="suinos">Suínos</option>
+                <option value="pescados">Pescados</option>
+                <option value="fabricantes">Fabricantes de máquinas</option>
+                <option value="outro">Outro</option>
             </select>
-            <textarea id="perfil_outro_disco" name="perfil_outro_disco" placeholder="Descreva o perfil" class="hidden"></textarea>
-            <textarea name="obs_disco" placeholder="Observação"></textarea>
-        </div>
+            <textarea id="aplicacao_outro" name="aplicacao_outro" placeholder="Especifique a aplicação" class="hidden"></textarea>
 
-        <div id="lamina" class="hidden">
-            <input type="text" name="largura" placeholder="Largura">
-            <input type="text" name="comprimento" placeholder="Comprimento">
-            <input type="text" name="espessura" placeholder="Espessura">
-            
-            <select name="tipo_fio_lamina">
-                <option value="">Tipo de fio</option>
-                <option value="fio_unico">Fio único</option>
-                <option value="fio_duplo">Fio duplo</option>
-            </select>
-            <input type="text" name="angulo_corte_lamina" placeholder="Ângulo de corte">
-            <input type="text" name="comprimento_fio_lamina" placeholder="Comprimento do fio">
+            <h3>📦 Detalhes Finais</h3>
+            <input type="number" name="quantidade" placeholder="Quantidade">
+            <input type="file" name="foto">
 
-            <select name="perfil_corte_lamina" id="perfil_corte_lamina">
-                <option value="">Perfil de corte</option>
-                <option value="liso">Liso</option>
-                <option value="fendas">Fendas</option>
-                <option value="dentes_serra">Dentes de serra</option>
-                <option value="ondulado_microserrilhado">Ondulado microserrilhado</option>
-                <option value="outro">Outros</option>
-            </select>
-            <textarea id="perfil_outro_lamina" name="perfil_outro_lamina" placeholder="Descreva o perfil" class="hidden"></textarea>
-            <textarea name="obs_lamina" placeholder="Observação"></textarea>
-        </div>
-
-        <div id="usinagem" class="hidden">
-            <textarea name="medidas_usinagem" placeholder="Medidas"></textarea>
-        </div>
-
-        <h3>🏭 Aplicação</h3>
-        <select name="aplicacao" id="aplicacao">
-            <option value="">Selecione</option>
-            <option value="aves">Aves</option>
-            <option value="bovinos">Bovinos</option>
-            <option value="outro">Outro</option>
-        </select>
-        <textarea id="aplicacao_outro" name="aplicacao_outro" placeholder="Descreva a aplicação" class="hidden"></textarea>
-
-        <h3>📦 Quantidade</h3>
-        <input type="text" name="quantidade" placeholder="Quantidade">
-
-        <h3>📸 Anexo</h3>
-        <input type="file" name="foto">
-
-        <button type="submit">Enviar Orçamento</button>
+            <button type="submit">Enviar Orçamento</button>
         </form>
     </div>
 </div>
 
 <script>
-const tipo = document.getElementById('tipo_produto');
-const disco = document.getElementById('disco');
-const lamina = document.getElementById('lamina');
-const usinagem = document.getElementById('usinagem');
+    const tipo = document.getElementById('tipo_produto');
+    const divs = { disco: document.getElementById('disco'), lamina: document.getElementById('lamina'), usinagem: document.getElementById('usinagem') };
 
-tipo.addEventListener('change', () => {
-    disco.classList.add('hidden'); lamina.classList.add('hidden'); usinagem.classList.add('hidden');
-    if (tipo.value === 'disco') disco.classList.remove('hidden');
-    if (tipo.value === 'lamina') lamina.classList.remove('hidden');
-    if (tipo.value === 'usinagem') usinagem.classList.remove('hidden');
-});
-
-function setupToggle(selectId, extraId) {
-    const sel = document.getElementById(selectId);
-    const ext = document.getElementById(extraId);
-    sel.addEventListener('change', () => {
-        if (sel.value === 'outro') ext.classList.remove('hidden');
-        else { ext.classList.add('hidden'); ext.value = ''; }
+    tipo.addEventListener('change', () => {
+        Object.values(divs).forEach(d => d.classList.add('hidden'));
+        if (divs[tipo.value]) divs[tipo.value].classList.remove('hidden');
     });
-}
 
-setupToggle('material_tipo', 'material_outro');
-setupToggle('aplicacao', 'aplicacao_outro');
-setupToggle('perfil_corte_disco', 'perfil_outro_disco');
-setupToggle('perfil_corte_lamina', 'perfil_outro_lamina');
-
-document.getElementById('orcamentoForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const res = await fetch('/orcamento', { method: 'POST', body: formData });
-    if (res.ok) {
-        document.getElementById('form_container').classList.add('hidden');
-        document.getElementById('mensagem_sucesso').classList.remove('hidden');
+    function setupToggle(selectId, extraId) {
+        const s = document.getElementById(selectId);
+        const e = document.getElementById(extraId);
+        s.addEventListener('change', () => {
+            if (s.value === 'outro') e.classList.remove('hidden');
+            else { e.classList.add('hidden'); e.value = ''; }
+        });
     }
-};
+
+    setupToggle('aplicacao', 'aplicacao_outro');
+    setupToggle('perfil_corte_disco', 'perfil_outro_disco');
+
+    document.getElementById('orcamentoForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const res = await fetch('/orcamento', { method: 'POST', body: formData });
+        if (res.ok) {
+            document.getElementById('form_container').classList.add('hidden');
+            document.getElementById('mensagem_sucesso').classList.remove('hidden');
+        }
+    };
 </script>
 </body>
 </html>
