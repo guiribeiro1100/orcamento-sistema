@@ -89,58 +89,53 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
     doc.pipe(res);
 
-    // --- CABEÇALHO ---
-    doc.fillColor('#1e40af').fontSize(22).font('Helvetica-Bold').text('ORÇAMENTO TÉCNICO', { align: 'center' });
-    doc.fontSize(10).fillColor('#64748b').text(`Gerado em: ${item.data}`, { align: 'center' }).moveDown(2);
+    // --- MONTAGEM DO PADRÃO AUTOMÁTICO ---
+    // Ex: DISCO D132x50x11mm Fio Simples Liso
+    const produtoNome = (item.tipo_produto || '').toUpperCase();
+    const medidas = item.tipo_produto === 'disco' 
+        ? `D${item.diametros.replace(' / ', 'x')}x${item.espessura}mm` 
+        : `${item.dimensoes_lamina}x${item.espessura}mm`;
+    
+    const tituloPadrao = `${produtoNome} ${medidas} ${item.tipo_fio || ''} ${item.perfil || ''}`;
 
-    // Função auxiliar para criar seções
+    // --- CABEÇALHO ---
+    doc.fillColor('#1e40af').fontSize(18).font('Helvetica-Bold').text('ORÇAMENTO TÉCNICO', { align: 'center' });
+    doc.fontSize(10).fillColor('#64748b').text(`Gerado em: ${item.data}`, { align: 'center' }).moveDown(1);
+
+    // --- TÍTULO PADRONIZADO (O QUE VOCÊ PEDIU) ---
+    doc.rect(40, doc.y, 515, 25).fill('#f1f5f9');
+    doc.fillColor('#1e293b').font('Helvetica-Bold').fontSize(12).text(tituloPadrao, 45, doc.y + 7, { align: 'center' }).moveDown(1.5);
+
+    // Função auxiliar para seções
     const criarSecao = (titulo, cor) => {
         doc.rect(40, doc.y, 515, 18).fill(cor);
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text(`  ${titulo}`, 40, doc.y + 4).moveDown(0.5);
         doc.fillColor('#000000').font('Helvetica').fontSize(11).moveDown(0.2);
     };
 
-    // --- SEÇÃO: DADOS DO CLIENTE ---
+    // --- SEÇÃO: CLIENTE ---
     criarSecao('DADOS DO CLIENTE', '#1e40af');
     doc.text(`CNPJ: ${item.cnpj || '---'}`);
     doc.text(`Cliente/Cargo: ${item.cliente_cargo || '---'}`);
-    doc.text(`Vendedor: ${item.vendedor || '---'}`);
-    doc.text(`E-mail: ${item.email || '---'}`);
-    doc.text(`WhatsApp: ${item.telefone || '---'}`).moveDown(1.5);
+    doc.text(`WhatsApp: ${item.telefone || '---'}`).moveDown(1);
 
-    // --- SEÇÃO: ESPECIFICAÇÕES DA PEÇA ---
-    criarSecao('ESPECIFICAÇÕES TÉCNICAS', '#1e40af');
-    doc.text(`Produto: ${(item.tipo_produto || '---').toUpperCase()}`);
+    // --- SEÇÃO: DETALHES TÉCNICOS ---
+    criarSecao('ESPECIFICAÇÕES DA PEÇA', '#1e40af');
     doc.text(`Máquina: ${item.nome_maquina || '---'}`);
     doc.text(`Cód. Original: ${item.codigo_original || '---'}`);
     doc.text(`Ângulo de Corte: ${item.angulo_corte || '---'}`);
-    doc.text(`Tipo de Fio: ${(item.tipo_fio || '---').toUpperCase()}`);
-    
-    // Medidas Dinâmicas
-    if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetros (Ext/Int): ${item.diametros}`);
-        doc.text(`Perfil de Corte: ${item.perfil || '---'}`);
-    } else if (item.tipo_produto === 'lamina') {
-        doc.text(`Dimensões (LxC): ${item.dimensoes_lamina}`);
-    } else {
-        doc.text(`Medidas: ${item.medidas_usinagem || '---'}`);
-    }
-    
-    doc.text(`Espessura: ${item.espessura || '---'}`);
-    doc.text(`Quantidade: ${item.quantidade || '0'}`);
-    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown(1.5);
+    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`);
+    doc.text(`Quantidade: ${item.quantidade || '0'}`).moveDown(1);
 
-    // --- SEÇÃO: RESPOSTA (Onde estava o erro) ---
-    // Verificamos se existe resposta. Se não existir, avisamos que está em análise.
-    criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04'); // Cor amarela/ouro
+    // --- SEÇÃO: RESPOSTA ---
+    criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
     const textoResposta = item.resposta_vendedor && item.resposta_vendedor.trim() !== "" 
         ? item.resposta_vendedor 
         : "Orçamento em fase de análise técnica.";
     
-    doc.font('Helvetica-Bold').fillColor('#854d0e').text('OBSERVAÇÕES DO VENDEDOR:', { underline: true }).moveDown(0.2);
+    doc.font('Helvetica-Bold').fillColor('#854d0e').text('OBSERVAÇÕES DO VENDEDOR:').moveDown(0.2);
     doc.font('Helvetica').fillColor('#000000').text(textoResposta, { align: 'justify', width: 500 }).moveDown(1.5);
 
     // --- FOTO ---
@@ -148,14 +143,12 @@ app.get('/orcamento/:id/pdf', (req, res) => {
         const imgPath = path.join(__dirname, item.foto);
         if (fs.existsSync(imgPath)) {
             doc.addPage();
-            doc.fillColor('#1e40af').font('Helvetica-Bold').fontSize(14).text('IMAGEM DE REFERÊNCIA', { align: 'center' }).moveDown();
             doc.image(imgPath, { fit: [450, 500], align: 'center' });
         }
     }
 
     doc.end();
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor ativo na porta ${PORT}`));
