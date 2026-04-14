@@ -2,69 +2,61 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Completo | Orçamentos</title>
+    <title>Painel de Gestão</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; }
-        h2 { color: #1e3a8a; text-align: center; margin-bottom: 30px; }
-        
-        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
-        
-        /* Cabeçalho do Card */
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px; }
-        .cnpj-title { font-size: 1.4em; color: #1e40af; margin: 0; }
-        .status-badge { padding: 6px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #f59e0b; text-transform: uppercase; }
-
-        /* Grade de Informações */
-        .info-section { margin-bottom: 20px; }
-        .section-title { font-size: 0.85em; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
-        
-        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .data-item { font-size: 0.95em; }
-        .data-item b { color: #475569; display: block; font-size: 0.8em; }
-        .data-item span { color: #1e293b; font-weight: 600; }
-
-        /* Destaque para Dados Técnicos */
-        .tech-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 10px; }
-
-        /* Ações */
-        .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9; }
-        .btn-pdf { text-decoration: none; color: white; background: #2563eb; padding: 10px 20px; border-radius: 6px; font-weight: bold; transition: 0.3s; }
-        .btn-pdf:hover { background: #1d4ed8; }
-        .img-link { color: #3b82f6; text-decoration: none; font-size: 0.9em; font-weight: bold; }
+        body { font-family: sans-serif; background: #eef2f7; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 8px solid #2563eb; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        b { color: #64748b; font-size: 0.8em; text-transform: uppercase; display: block; }
+        span { color: #1e293b; font-weight: bold; }
+        .btn-pdf { background: #2563eb; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>📋 Gestão de Orçamentos (Dados Completos)</h2>
-    <div id="lista">
-        <p style="text-align: center;">Buscando informações no servidor...</p>
-    </div>
-</div>
+    <h2 style="text-align:center">📋 Orçamentos Recebidos</h2>
+    <div id="lista">Carregando...</div>
 
 <script>
     async function carregar() {
         const lista = document.getElementById('lista');
         try {
             const res = await fetch('/orcamentos');
-            if (!res.ok) throw new Error('Servidor offline');
             const dados = await res.json();
-            
+
             if (!dados || dados.length === 0) {
-                lista.innerHTML = '<p style="text-align:center;">Nenhum orçamento cadastrado ainda.</p>';
+                lista.innerHTML = "<h3>Nenhum orçamento disponível.</h3>";
                 return;
             }
 
             lista.innerHTML = '';
-
             [...dados].reverse().forEach(item => {
                 lista.innerHTML += `
                     <div class="card">
-                        <div class="card-header">
-                            <div>
-                                <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
-                                <small style="color: #94a3b8">Data: ${item.data || ''}</small>
-                            </div>
-                            <span class="status-badge">${item.status || 'novo'}</span>
+                        <div style="display:flex; justify-content:space-between">
+                            <h3 style="margin:0">CNPJ: ${item.cnpj || '---'}</h3>
+                            <small>${item.data}</small>
                         </div>
+                        
+                        <div class="grid">
+                            <div><b>Vendedor</b><span>${item.vendedor || '---'}</span></div>
+                            <div><b>Contato</b><span>${item.cliente_cargo}</span></div>
+                            <div><b>Produto</b><span>${item.tipo_produto.toUpperCase()}</span></div>
+                            <div><b>Ângulo Corte</b><span style="color:#2563eb">${item.angulo_corte || '---'}</span></div>
+                            <div><b>Tipo de Fio</b><span>${(item.tipo_fio || '---').toUpperCase()}</span></div>
+                            <div><b>Quantidade</b><span>${item.quantidade}</span></div>
+                            <div><b>Aplicação</b><span>${item.aplicacao_final}</span></div>
+                        </div>
+
+                        <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">ABRIR PDF</a>
+                    </div>
+                `;
+            });
+        } catch (e) {
+            lista.innerHTML = "<h3>Erro ao conectar com o servidor.</h3>";
+        }
+    }
+    carregar();
+</script>
+</body>
+</html>

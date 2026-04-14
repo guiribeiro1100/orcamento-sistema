@@ -4,167 +4,101 @@
     <meta charset="UTF-8">
     <title>Solicitação de Orçamento</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        h2 { color: #1e40af; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px; }
-        h3 { color: #3b82f6; font-size: 1.1em; margin-top: 20px; display: flex; align-items: center; gap: 8px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 0.9em; }
-        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 18px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; transition: border 0.3s; }
-        input:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 700px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h3 { color: #2563eb; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 25px; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9em; }
+        input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .hidden { display: none; }
-        button { width: 100%; padding: 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s; }
-        button:hover { background: #1d4ed8; }
-        #mensagem_sucesso { text-align: center; padding: 50px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button { width: 100%; padding: 15px; background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 20px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="mensagem_sucesso" class="hidden">
-        <h2 style="color: #059669;">✅ Orçamento Enviado!</h2>
-        <p>Sua solicitação foi registrada com sucesso no sistema.</p>
-        <button onclick="window.location.reload()">Fazer Novo Pedido</button>
-    </div>
+    <form id="orcForm">
+        <h3>👤 Identificação</h3>
+        <input type="text" name="cnpj" placeholder="CNPJ" required>
+        <div class="grid">
+            <input type="text" name="cliente_cargo" placeholder="Nome / Cargo" required>
+            <input type="text" name="vendedor" placeholder="Vendedor Responsável">
+        </div>
 
-    <div id="form_container">
-        <h2>Solicitar Orçamento Técnico</h2>
-        <form id="orcamentoForm">
+        <h3>⚙️ Produto</h3>
+        <select name="tipo_produto" id="tipo" required>
+            <option value="">Selecione o Produto...</option>
+            <option value="disco">Disco</option>
+            <option value="lamina">Lâmina</option>
+            <option value="usinagem">Usinagem</option>
+        </select>
 
-            <h3>👤 Identificação do Cliente</h3>
-            <label>CNPJ</label>
-            <input type="text" name="cnpj" placeholder="00.000.000/0000-00" required>
-            
-            <div class="grid-2">
+        <div id="campos_tecnicos">
+            <div class="grid">
                 <div>
-                    <label>Nome / Cargo</label>
-                    <input type="text" name="cliente_cargo" required>
+                    <label>Ângulo de Corte</label>
+                    <input type="text" name="angulo_corte" placeholder="Ex: 30°">
                 </div>
                 <div>
-                    <label>Vendedor Responsável</label>
-                    <input type="text" name="vendedor">
-                </div>
-            </div>
-
-            <div class="grid-2">
-                <div>
-                    <label>E-mail</label>
-                    <input type="email" name="email">
-                </div>
-                <div>
-                    <label>Telefone / WhatsApp</label>
-                    <input type="text" name="telefone">
+                    <label>Tipo de Fio</label>
+                    <select name="tipo_fio">
+                        <option value="unico">Fio Único</option>
+                        <option value="duplo">Fio Duplo</option>
+                    </select>
                 </div>
             </div>
 
-            <h3>⚙️ Especificações do Produto</h3>
-            <label>Tipo de Produto</label>
-            <select name="tipo_produto" id="tipo_produto" required>
-                <option value="">Selecione...</option>
-                <option value="disco">Disco</option>
-                <option value="lamina">Lâmina</option>
-                <option value="usinagem">Peça de Usinagem</option>
-            </select>
-
-            <div class="grid-2">
-                <div>
-                    <label>Nome da Máquina</label>
-                    <input type="text" name="nome_maquina">
-                </div>
-                <div>
-                    <label>Código da Peça Original</label>
-                    <input type="text" name="codigo_original">
-                </div>
-            </div>
-
-            <div id="secao_disco" class="hidden">
-                <div class="grid-2">
+            <div id="extra_disco" class="hidden">
+                <div class="grid">
                     <input type="text" name="diametro_externo" placeholder="Diâmetro Externo">
                     <input type="text" name="diametro_interno" placeholder="Diâmetro Interno">
                 </div>
                 <input type="text" name="espessura_disco" placeholder="Espessura">
-                <label>Ângulo de corte</label>
-                <input type="text" name="angulo_corte">
-                <label>Perfil de Corte</label>
-                <select name="perfil_corte_disco" id="perfil_corte_disco">
-                    <option value="liso">Liso</option>
-                    <option value="fendas">Fendas</option>
-                    <option value="dentes_serra">Dentes de Serra</option>
-                    <option value="ondulado">Ondulado Microserrilhado</option>
-                    <option value="outro">Outro...</option>
-                </select>
-                <textarea id="perfil_outro_disco" name="perfil_outro_disco" placeholder="Descreva o perfil" class="hidden"></textarea>
             </div>
 
-            <div id="secao_lamina" class="hidden">
-                <div class="grid-2">
+            <div id="extra_lamina" class="hidden">
+                <div class="grid">
                     <input type="text" name="largura" placeholder="Largura">
                     <input type="text" name="comprimento" placeholder="Comprimento">
                 </div>
-                <input type="text" name="espessura_lamina" placeholder="Espessura">
-                <label>Ângulo de corte</label>
-                <input type="text" name="angulo_corte_lamina">
             </div>
+        </div>
 
-            <div id="secao_usinagem" class="hidden">
-                <label>Detalhes e Medidas</label>
-                <textarea name="medidas_usinagem" rows="4"></textarea>
-            </div>
+        <h3>🏭 Aplicação</h3>
+        <select name="aplicacao" id="aplic">
+            <option value="aves">Aves</option>
+            <option value="bovinos">Bovinos</option>
+            <option value="suinos">Suínos</option>
+            <option value="pescados">Pescados</option>
+            <option value="fabricantes">Fabricantes de máquinas</option>
+            <option value="outro">Outro</option>
+        </select>
+        <input type="text" name="aplicacao_outro" id="apl_outro" class="hidden" placeholder="Qual aplicação?">
 
-            <h3>🏭 Aplicação</h3>
-            <select name="aplicacao" id="aplicacao">
-                <option value="aves">Aves</option>
-                <option value="bovinos">Bovinos</option>
-                <option value="suinos">Suínos</option>
-                <option value="pescados">Pescados</option>
-                <option value="fabricantes">Fabricantes de máquinas</option>
-                <option value="outro">Outro</option>
-            </select>
-            <textarea id="aplicacao_outro" name="aplicacao_outro" class="hidden" placeholder="Especifique a aplicação..."></textarea>
+        <h3>📦 Finalização</h3>
+        <input type="number" name="quantidade" placeholder="Quantidade">
+        <input type="file" name="foto">
 
-            <h3>📦 Quantidade e Foto</h3>
-            <input type="number" name="quantidade" placeholder="Quantidade desejada">
-            <input type="file" name="foto">
-
-            <button type="submit">Enviar Solicitação</button>
-        </form>
-    </div>
+        <button type="submit">Enviar Solicitação</button>
+    </form>
 </div>
 
 <script>
-    const tipo = document.getElementById('tipo_produto');
-    const disco = document.getElementById('secao_disco');
-    const lamina = document.getElementById('secao_lamina');
-    const usinagem = document.getElementById('secao_usinagem');
+    const tipo = document.getElementById('tipo');
+    tipo.onchange = () => {
+        document.getElementById('extra_disco').classList.toggle('hidden', tipo.value !== 'disco');
+        document.getElementById('extra_lamina').classList.toggle('hidden', tipo.value !== 'lamina');
+    };
 
-    tipo.addEventListener('change', () => {
-        [disco, lamina, usinagem].forEach(d => d.classList.add('hidden'));
-        if (tipo.value === 'disco') disco.classList.remove('hidden');
-        if (tipo.value === 'lamina') lamina.classList.remove('hidden');
-        if (tipo.value === 'usinagem') usinagem.classList.remove('hidden');
-    });
+    document.getElementById('aplic').onchange = (e) => {
+        document.getElementById('apl_outro').classList.toggle('hidden', e.target.value !== 'outro');
+    };
 
-    function toggleOutro(selectId, targetId) {
-        const s = document.getElementById(selectId);
-        const t = document.getElementById(targetId);
-        s.addEventListener('change', () => {
-            if (s.value === 'outro') t.classList.remove('hidden');
-            else { t.classList.add('hidden'); t.value = ''; }
-        });
-    }
-
-    toggleOutro('aplicacao', 'aplicacao_outro');
-    toggleOutro('perfil_corte_disco', 'perfil_outro_disco');
-
-    document.getElementById('orcamentoForm').onsubmit = async (e) => {
+    document.getElementById('orcForm').onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
         const res = await fetch('/orcamento', { method: 'POST', body: fd });
-        if (res.ok) {
-            document.getElementById('form_container').classList.add('hidden');
-            document.getElementById('mensagem_sucesso').classList.remove('hidden');
-            window.scrollTo(0,0);
-        }
+        if(res.ok) { alert('Enviado!'); location.reload(); }
     };
 </script>
 </body>
