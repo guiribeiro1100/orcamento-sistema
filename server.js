@@ -1,257 +1,205 @@
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const PDFDocument = require('pdfkit');
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Painel</title>
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// =========================
-// UPLOAD
-// =========================
-
-const uploadPath = path.join(__dirname, 'uploads');
-
-if (!fs.existsSync(uploadPath)) {
-    fs.mkdirSync(uploadPath);
+<style>
+body {
+    font-family: Arial;
+    background: #eef2f7;
+    padding: 20px;
 }
 
-app.use(express.static(__dirname));
-app.use('/uploads', express.static(uploadPath));
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadPath),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-
-const upload = multer({ storage });
-
-// =========================
-// BANCO JSON
-// =========================
-
-const DB_FILE = path.join(__dirname, 'data.json');
-
-function readDB() {
-    if (!fs.existsSync(DB_FILE)) return [];
-    return JSON.parse(fs.readFileSync(DB_FILE));
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-function saveDB(data) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-// =========================
-// ROTAS HTML
-// =========================
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'form.html')));
-app.get('/painel.html', (req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
+.status {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: white;
+}
 
-// =========================
-// CRIAR ORÇAMENTO
-// =========================
+.novo {
+    background: #f59e0b;
+}
 
-app.post('/orcamento', upload.single('foto'), (req, res) => {
+.respondido {
+    background: #10b981;
+}
 
-    const db = readDB();
-    const b = req.body;
+.info {
+    margin-top: 10px;
+    line-height: 1.6;
+}
 
-    const novo = {
-        id: Date.now(),
+.detalhes {
+    margin-top: 10px;
+    background: #f9fafb;
+    padding: 10px;
+    border-radius: 6px;
+}
 
-        // CLIENTE
-        empresa_local: b.empresa_local || '',
-        cliente_cargo: b.cliente_cargo || '',
-        email: b.email || '',
-        telefone: b.telefone || '',
-        vendedor: b.vendedor || '',
+img {
+    margin-top: 10px;
+    border-radius: 8px;
+    max-width: 150px;
+}
 
-        // TIPO
-        tipo_produto: b.tipo_produto || '',
+textarea {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
 
-        // DISCO
-        diametro_externo: b.diametro_externo || '',
-        diametro_interno: b.diametro_interno || '',
-        tipo_fio: b.tipo_fio || '',
-        tipo_fio_desc: b.tipo_fio_desc || '',
-        obs_disco: b.obs_disco || '',
+.actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
 
-        // LAMINA
-        largura: b.largura || '',
-        comprimento: b.comprimento || '',
-        espessura: b.espessura || '',
-        obs_lamina: b.obs_lamina || '',
+button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
 
-        // USINAGEM
-        medidas_usinagem: b.medidas_usinagem || '',
+.responder {
+    background: #2563eb;
+    color: white;
+}
 
-        // APLICAÇÃO
-        aplicacao: b.aplicacao || '',
+.pdf {
+    background: #111827;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    display: inline-block;
+    flex: 1;
+}
+</style>
+</head>
 
-        // FOTO
-        foto: req.file ? '/uploads/' + req.file.filename : null,
+<body>
 
-        status: 'novo',
-        historico: [],
-        data: new Date().toLocaleString()
-    };
+<h2>📊 Painel de Orçamentos</h2>
 
-    db.push(novo);
-    saveDB(db);
+<div id="lista"></div>
 
-    res.send({ ok: true });
-});
+<script>
+async function carregar() {
+    const res = await fetch('/orcamentos');
+    const dados = await res.json();
 
-// =========================
-// LISTAR
-// =========================
+    const lista = document.getElementById('lista');
+    lista.innerHTML = '';
 
-app.get('/orcamentos', (req, res) => {
-    res.json(readDB());
-});
+    dados.reverse().forEach(item => {
 
-// =========================
-// RESPONDER
-// =========================
+        let detalhes = '';
 
-app.post('/responder/:id', (req, res) => {
-
-    const db = readDB();
-    const item = db.find(o => o.id == req.params.id);
-
-    if (item) {
-        item.historico.push({
-            resposta: req.body.resposta,
-            data: new Date().toLocaleString()
-        });
-
-        item.status = 'respondido';
-    }
-
-    saveDB(db);
-
-    res.send({ ok: true });
-});
-
-// =========================
-// PDF PROFISSIONAL DINÂMICO
-// =========================
-
-app.get('/orcamento/:id/pdf', (req, res) => {
-
-    const db = readDB();
-    const item = db.find(o => o.id == req.params.id);
-
-    if (!item) return res.status(404).send('Não encontrado');
-
-    const doc = new PDFDocument({ margin: 50 });
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
-
-    doc.pipe(res);
-
-    // ===== TÍTULO =====
-    doc.fontSize(20).text('ORÇAMENTO TÉCNICO', { align: 'center' });
-    doc.moveDown(2);
-
-    // ===== CLIENTE =====
-    doc.fontSize(14).text('DADOS DO CLIENTE');
-    doc.fontSize(12);
-
-    doc.text(`Empresa: ${item.empresa_local}`);
-    doc.text(`Cliente: ${item.cliente_cargo}`);
-    doc.text(`Email: ${item.email}`);
-    doc.text(`Telefone: ${item.telefone}`);
-    doc.text(`Vendedor: ${item.vendedor}`);
-
-    doc.moveDown();
-
-    // ===== TIPO =====
-    doc.fontSize(14).text('TIPO DE PRODUTO');
-    doc.fontSize(12).text(item.tipo_produto.toUpperCase());
-
-    doc.moveDown();
-
-    // ===== CONTEÚDO DINÂMICO =====
-
-    if (item.tipo_produto === 'disco') {
-
-        doc.fontSize(14).text('DISCO');
-        doc.fontSize(12);
-
-        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
-        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
-        doc.text(`Tipo de fio: ${item.tipo_fio}`);
-        doc.text(`Descrição do fio: ${item.tipo_fio_desc}`);
-        doc.text(`Observação: ${item.obs_disco}`);
-    }
-
-    if (item.tipo_produto === 'lamina') {
-
-        doc.fontSize(14).text('LÂMINA');
-        doc.fontSize(12);
-
-        doc.text(`Largura: ${item.largura}`);
-        doc.text(`Comprimento: ${item.comprimento}`);
-        doc.text(`Espessura: ${item.espessura}`);
-        doc.text(`Observação: ${item.obs_lamina}`);
-    }
-
-    if (item.tipo_produto === 'usinagem') {
-
-        doc.fontSize(14).text('USINAGEM');
-        doc.fontSize(12);
-
-        doc.text(`Medidas: ${item.medidas_usinagem}`);
-    }
-
-    doc.moveDown();
-
-    // ===== APLICAÇÃO =====
-    doc.fontSize(14).text('APLICAÇÃO');
-    doc.fontSize(12).text(item.aplicacao);
-
-    doc.moveDown();
-
-    // ===== RESPOSTA =====
-    const resposta = item.historico?.slice(-1)[0]?.resposta || 'Sem resposta';
-
-    doc.fontSize(14).text('RESPOSTA');
-    doc.fontSize(12).text(resposta);
-
-    // ===== IMAGEM =====
-    if (item.foto) {
-        doc.addPage();
-
-        doc.fontSize(16).text('ANEXO DO CLIENTE', { align: 'center' });
-        doc.moveDown();
-
-        try {
-            doc.image(path.join(__dirname, item.foto), {
-                fit: [500, 400],
-                align: 'center'
-            });
-        } catch (e) {
-            doc.text('Erro ao carregar imagem');
+        if (item.tipo_produto === 'disco') {
+            detalhes = `
+                🔵 Diâmetro ext: ${item.diametro_externo || '-'}<br>
+                🔵 Diâmetro int: ${item.diametro_interno || '-'}<br>
+                🔵 Fio: ${item.tipo_fio || '-'}
+            `;
         }
-    }
 
-    doc.end();
-});
+        if (item.tipo_produto === 'lamina') {
+            detalhes = `
+                📏 Largura: ${item.largura || '-'}<br>
+                📏 Comprimento: ${item.comprimento || '-'}<br>
+                📏 Espessura: ${item.espessura || '-'}
+            `;
+        }
 
-// =========================
-// START
-// =========================
+        if (item.tipo_produto === 'usinagem') {
+            detalhes = `⚙️ Medidas: ${item.medidas_usinagem || '-'}`;
+        }
 
-const PORT = process.env.PORT || 3000;
+        lista.innerHTML += `
+            <div class="card">
 
-app.listen(PORT, () => {
-    console.log('Rodando na porta ' + PORT);
-});
+                <div class="header">
+                    <h3>${item.cliente_cargo || 'Sem nome'} • ${item.tipo_produto}</h3>
+                    <span class="status ${item.status}">
+                        ${item.status}
+                    </span>
+                </div>
+
+material_tipo: b.material_tipo || '',
+quantidade: b.quantidade || '',
+nome_maquina: b.nome_maquina || '',
+codigo_original: b.codigo_original || '',
+
+                <div class="info">
+                    <b>Empresa:</b> ${item.empresa_local || '-'} <br>
+                    <b>Telefone:</b> ${item.telefone || '-'} <br>
+                    <b>Aplicação:</b> ${item.aplicacao || '-'}
+                </div>
+
+                <div class="detalhes">
+                    ${detalhes}
+                </div>
+
+                ${item.foto ? `<img src="${item.foto}">` : ''}
+
+                <textarea id="resposta-${item.id}" placeholder="Digite a resposta..."></textarea>
+
+                <div class="actions">
+                    <button class="responder" onclick="responder(${item.id})">
+                        Responder
+                    </button>
+
+                    <a class="pdf" href="/orcamento/${item.id}/pdf" target="_blank">
+                        PDF
+                    </a>
+                </div>
+
+            </div>
+        `;
+    });
+}
+
+async function responder(id) {
+    const texto = document.getElementById('resposta-' + id).value;
+
+    await fetch('/responder/' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resposta: texto })
+    });
+
+    alert('Resposta enviada!');
+    carregar();
+}
+
+carregar();
+</script>
+
+</body>
+</html>
