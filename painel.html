@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <title>Painel Administrativo | Orçamentos</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: auto; }
         h2 { color: #1e3a8a; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #d1d5db; padding-bottom: 10px; }
         
-        /* Estilo dos Cards */
         .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 6px solid #2563eb; position: relative; }
         .status-badge { position: absolute; top: 20px; right: 20px; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; color: white; background: #f59e0b; text-transform: uppercase; }
         .status-respondido { background: #10b981; }
@@ -16,15 +15,15 @@
         h3 { margin: 0 0 10px 0; color: #1e40af; font-size: 1.2em; }
         .cliente-info { color: #4b5563; font-size: 0.95em; margin-bottom: 15px; }
         
-        /* Grid de Especificações */
         .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
         .info-item b { display: block; color: #64748b; font-size: 0.8em; text-transform: uppercase; margin-bottom: 4px; }
         .info-item span { color: #1e293b; font-weight: 600; }
 
-        /* Botões */
-        .actions { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+        .actions { margin-top: 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #eee; padding-top: 10px; }
         .btn-pdf { text-decoration: none; color: #2563eb; font-weight: bold; font-size: 0.9em; border: 1px solid #2563eb; padding: 8px 15px; border-radius: 6px; transition: 0.3s; }
         .btn-pdf:hover { background: #2563eb; color: white; }
+        
+        .msg-vazio { text-align: center; color: #64748b; margin-top: 50px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -32,57 +31,76 @@
 <div class="container">
     <h2>📋 Gestão de Orçamentos Técnicos</h2>
     <div id="lista">
-        </div>
+        <p style="text-align: center;">Carregando dados...</p>
+    </div>
 </div>
 
 <script>
     async function carregar() {
+        const lista = document.getElementById('lista');
         try {
+            // Chamada para o servidor
             const res = await fetch('/orcamentos');
+            
+            if (!res.ok) throw new Error('Falha na resposta do servidor');
+            
             const dados = await res.json();
-            const lista = document.getElementById('lista');
+            
+            // Se não houver dados ainda
+            if (!dados || dados.length === 0) {
+                lista.innerHTML = '<p class="msg-vazio">Nenhum orçamento encontrado no banco de dados.</p>';
+                return;
+            }
+
             lista.innerHTML = '';
 
-            // Inverter para mostrar os mais novos primeiro
-            dados.reverse().forEach(item => {
-                // Lógica para mostrar a medida principal dependendo do produto
+            // Renderiza cada card (os mais novos primeiro)
+            [...dados].reverse().forEach(item => {
                 let medidaPrincipal = "";
+                
                 if (item.tipo_produto === 'disco') {
                     medidaPrincipal = `<b>Diâmetros (Ext/Int)</b><span>${item.diametros || '-'}</span>`;
                 } else if (item.tipo_produto === 'lamina') {
                     medidaPrincipal = `<b>Dimensões (LxC)</b><span>${item.dimensoes_lamina || '-'}</span>`;
                 } else {
-                    medidaPrincipal = `<b>Usinagem</b><span>Ver Detalhes</span>`;
+                    medidaPrincipal = `<b>Usinagem</b><span>Ver no PDF</span>`;
                 }
 
                 lista.innerHTML += `
                     <div class="card">
-                        <span class="status-badge ${item.status === 'respondido' ? 'status-respondido' : ''}">${item.status}</span>
-                        <h3>CNPJ: ${item.cnpj}</h3>
+                        <span class="status-badge ${item.status === 'respondido' ? 'status-respondido' : ''}">${item.status || 'novo'}</span>
+                        <h3>CNPJ: ${item.cnpj || 'Não informado'}</h3>
                         <div class="cliente-info">
-                            <b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor || 'Não atribuído'}
+                            <b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor || 'Padrão'}
                         </div>
                         
                         <div class="info-grid">
-                            <div class="info-item"><b>Produto</b><span>${item.tipo_produto.toUpperCase()}</span></div>
+                            <div class="info-item"><b>Produto</b><span>${(item.tipo_produto || 'N/A').toUpperCase()}</span></div>
                             <div class="info-item">${medidaPrincipal}</div>
                             <div class="info-item"><b>Ângulo de Corte</b><span>${item.angulo_corte || '-'}</span></div>
-                            <div class="info-item"><b>Qtd</b><span>${item.quantidade}</span></div>
+                            <div class="info-item"><b>Quantidade</b><span>${item.quantidade || '0'}</span></div>
                         </div>
                         
                         <div class="actions">
                             <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">📄 GERAR PDF TÉCNICO</a>
-                            <small style="color: #94a3b8; margin-left: auto;">Data: ${item.data}</small>
+                            <small style="color: #94a3b8; margin-left: auto;">${item.data || ''}</small>
                         </div>
                     </div>
                 `;
             });
+
         } catch (err) {
-            document.getElementById('lista').innerHTML = "<p>Erro ao carregar dados. O servidor está rodando?</p>";
+            console.error("Erro detalhado:", err);
+            lista.innerHTML = `
+                <div style="text-align:center; color: #ef4444; padding: 20px; background: #fee2e2; border-radius: 8px;">
+                    <b>⚠️ Erro de Conexão</b><br>
+                    Não foi possível carregar os dados. Verifique se o servidor está ativo na Render.<br>
+                    <small>${err.message}</small>
+                </div>`;
         }
     }
 
-    // Carregar ao abrir a página
+    // Tenta carregar os dados
     carregar();
 </script>
 </body>
