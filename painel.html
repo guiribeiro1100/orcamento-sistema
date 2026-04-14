@@ -1,58 +1,88 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>Painel</title>
-<style>
-    body { font-family: Arial; background: #eef2f7; padding: 20px; }
-    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 800px; margin: auto; margin-bottom: 20px; }
-    .badge { padding: 5px 10px; border-radius: 4px; color: white; font-size: 12px; float: right; }
-    .novo { background: #f59e0b; }
-    .respondido { background: #10b981; }
-    .tech { background: #f8fafc; padding: 10px; border-left: 4px solid #2563eb; margin-top: 10px; }
-</style>
+    <meta charset="UTF-8">
+    <title>Painel Administrativo | Orçamentos</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        h2 { color: #1e3a8a; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #d1d5db; padding-bottom: 10px; }
+        
+        /* Estilo dos Cards */
+        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 6px solid #2563eb; position: relative; }
+        .status-badge { position: absolute; top: 20px; right: 20px; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; color: white; background: #f59e0b; text-transform: uppercase; }
+        .status-respondido { background: #10b981; }
+
+        h3 { margin: 0 0 10px 0; color: #1e40af; font-size: 1.2em; }
+        .cliente-info { color: #4b5563; font-size: 0.95em; margin-bottom: 15px; }
+        
+        /* Grid de Especificações */
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .info-item b { display: block; color: #64748b; font-size: 0.8em; text-transform: uppercase; margin-bottom: 4px; }
+        .info-item span { color: #1e293b; font-weight: 600; }
+
+        /* Botões */
+        .actions { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+        .btn-pdf { text-decoration: none; color: #2563eb; font-weight: bold; font-size: 0.9em; border: 1px solid #2563eb; padding: 8px 15px; border-radius: 6px; transition: 0.3s; }
+        .btn-pdf:hover { background: #2563eb; color: white; }
+    </style>
 </head>
 <body>
 
-<h2 style="text-align:center">📊 Gestão de Orçamentos</h2>
-<div id="lista"></div>
+<div class="container">
+    <h2>📋 Gestão de Orçamentos Técnicos</h2>
+    <div id="lista">
+        </div>
+</div>
 
 <script>
     async function carregar() {
-        const res = await fetch('/orcamentos');
-        const dados = await res.json();
-        const container = document.getElementById('lista');
-        container.innerHTML = '';
+        try {
+            const res = await fetch('/orcamentos');
+            const dados = await res.json();
+            const lista = document.getElementById('lista');
+            lista.innerHTML = '';
 
-        dados.reverse().forEach(item => {
-            container.innerHTML += `
-                <div class="card">
-                    <span class="badge ${item.status}">${item.status.toUpperCase()}</span>
-                    <h3>CNPJ: ${item.cnpj}</h3>
-                    <p><b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor}</p>
-                    <div class="tech">
-                        <b>Produto:</b> ${item.tipo_produto.toUpperCase()} | <b>Qtd:</b> ${item.quantidade}<br>
-                        <b>Ângulo de Corte:</b> ${item.angulo_corte || '-'}<br>
-                        <b>Aplicação:</b> ${item.aplicacao_final}
+            // Inverter para mostrar os mais novos primeiro
+            dados.reverse().forEach(item => {
+                // Lógica para mostrar a medida principal dependendo do produto
+                let medidaPrincipal = "";
+                if (item.tipo_produto === 'disco') {
+                    medidaPrincipal = `<b>Diâmetros (Ext/Int)</b><span>${item.diametros || '-'}</span>`;
+                } else if (item.tipo_produto === 'lamina') {
+                    medidaPrincipal = `<b>Dimensões (LxC)</b><span>${item.dimensoes_lamina || '-'}</span>`;
+                } else {
+                    medidaPrincipal = `<b>Usinagem</b><span>Ver Detalhes</span>`;
+                }
+
+                lista.innerHTML += `
+                    <div class="card">
+                        <span class="status-badge ${item.status === 'respondido' ? 'status-respondido' : ''}">${item.status}</span>
+                        <h3>CNPJ: ${item.cnpj}</h3>
+                        <div class="cliente-info">
+                            <b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor || 'Não atribuído'}
+                        </div>
+                        
+                        <div class="info-grid">
+                            <div class="info-item"><b>Produto</b><span>${item.tipo_produto.toUpperCase()}</span></div>
+                            <div class="info-item">${medidaPrincipal}</div>
+                            <div class="info-item"><b>Ângulo de Corte</b><span>${item.angulo_corte || '-'}</span></div>
+                            <div class="info-item"><b>Qtd</b><span>${item.quantidade}</span></div>
+                        </div>
+                        
+                        <div class="actions">
+                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">📄 GERAR PDF TÉCNICO</a>
+                            <small style="color: #94a3b8; margin-left: auto;">Data: ${item.data}</small>
+                        </div>
                     </div>
-                    <div style="margin-top:10px">
-                        <button onclick="mudarStatus(${item.id}, 'respondido')">Marcar Respondido</button>
-                        <a href="/orcamento/${item.id}/pdf" target="_blank">📄 Gerar PDF</a>
-                    </div>
-                </div>
-            `;
-        });
+                `;
+            });
+        } catch (err) {
+            document.getElementById('lista').innerHTML = "<p>Erro ao carregar dados. O servidor está rodando?</p>";
+        }
     }
 
-    async function mudarStatus(id, st) {
-        await fetch('/status/'+id, { 
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({status: st}) 
-        });
-        carregar();
-    }
-
+    // Carregar ao abrir a página
     carregar();
 </script>
 </body>
