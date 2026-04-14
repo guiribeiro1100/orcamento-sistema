@@ -2,36 +2,44 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Administrativo | Orçamentos</title>
+    <title>Painel Completo | Orçamentos</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        h2 { color: #1e3a8a; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #d1d5db; padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        h2 { color: #1e3a8a; text-align: center; margin-bottom: 30px; }
         
-        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 6px solid #2563eb; position: relative; }
-        .status-badge { position: absolute; top: 20px; right: 20px; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; color: white; background: #f59e0b; text-transform: uppercase; }
-        .status-respondido { background: #10b981; }
+        .card { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 8px solid #2563eb; }
+        
+        /* Cabeçalho do Card */
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px; }
+        .cnpj-title { font-size: 1.4em; color: #1e40af; margin: 0; }
+        .status-badge { padding: 6px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #f59e0b; text-transform: uppercase; }
 
-        h3 { margin: 0 0 10px 0; color: #1e40af; font-size: 1.2em; }
-        .cliente-info { color: #4b5563; font-size: 0.95em; margin-bottom: 15px; }
+        /* Grade de Informações */
+        .info-section { margin-bottom: 20px; }
+        .section-title { font-size: 0.85em; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
         
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .info-item b { display: block; color: #64748b; font-size: 0.8em; text-transform: uppercase; margin-bottom: 4px; }
-        .info-item span { color: #1e293b; font-weight: 600; }
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .data-item { font-size: 0.95em; }
+        .data-item b { color: #475569; display: block; font-size: 0.8em; }
+        .data-item span { color: #1e293b; font-weight: 600; }
 
-        .actions { margin-top: 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #eee; padding-top: 10px; }
-        .btn-pdf { text-decoration: none; color: #2563eb; font-weight: bold; font-size: 0.9em; border: 1px solid #2563eb; padding: 8px 15px; border-radius: 6px; transition: 0.3s; }
-        .btn-pdf:hover { background: #2563eb; color: white; }
-        
-        .msg-vazio { text-align: center; color: #64748b; margin-top: 50px; font-style: italic; }
+        /* Destaque para Dados Técnicos */
+        .tech-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: 10px; }
+
+        /* Ações */
+        .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9; }
+        .btn-pdf { text-decoration: none; color: white; background: #2563eb; padding: 10px 20px; border-radius: 6px; font-weight: bold; transition: 0.3s; }
+        .btn-pdf:hover { background: #1d4ed8; }
+        .img-link { color: #3b82f6; text-decoration: none; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📋 Gestão de Orçamentos Técnicos</h2>
+    <h2>📋 Gestão de Orçamentos (Dados Completos)</h2>
     <div id="lista">
-        <p style="text-align: center;">Carregando dados...</p>
+        <p style="text-align: center;">Buscando informações no servidor...</p>
     </div>
 </div>
 
@@ -39,69 +47,24 @@
     async function carregar() {
         const lista = document.getElementById('lista');
         try {
-            // Chamada para o servidor
             const res = await fetch('/orcamentos');
-            
-            if (!res.ok) throw new Error('Falha na resposta do servidor');
-            
+            if (!res.ok) throw new Error('Servidor offline');
             const dados = await res.json();
             
-            // Se não houver dados ainda
             if (!dados || dados.length === 0) {
-                lista.innerHTML = '<p class="msg-vazio">Nenhum orçamento encontrado no banco de dados.</p>';
+                lista.innerHTML = '<p style="text-align:center;">Nenhum orçamento cadastrado ainda.</p>';
                 return;
             }
 
             lista.innerHTML = '';
 
-            // Renderiza cada card (os mais novos primeiro)
             [...dados].reverse().forEach(item => {
-                let medidaPrincipal = "";
-                
-                if (item.tipo_produto === 'disco') {
-                    medidaPrincipal = `<b>Diâmetros (Ext/Int)</b><span>${item.diametros || '-'}</span>`;
-                } else if (item.tipo_produto === 'lamina') {
-                    medidaPrincipal = `<b>Dimensões (LxC)</b><span>${item.dimensoes_lamina || '-'}</span>`;
-                } else {
-                    medidaPrincipal = `<b>Usinagem</b><span>Ver no PDF</span>`;
-                }
-
                 lista.innerHTML += `
                     <div class="card">
-                        <span class="status-badge ${item.status === 'respondido' ? 'status-respondido' : ''}">${item.status || 'novo'}</span>
-                        <h3>CNPJ: ${item.cnpj || 'Não informado'}</h3>
-                        <div class="cliente-info">
-                            <b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor || 'Padrão'}
+                        <div class="card-header">
+                            <div>
+                                <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
+                                <small style="color: #94a3b8">Data: ${item.data || ''}</small>
+                            </div>
+                            <span class="status-badge">${item.status || 'novo'}</span>
                         </div>
-                        
-                        <div class="info-grid">
-                            <div class="info-item"><b>Produto</b><span>${(item.tipo_produto || 'N/A').toUpperCase()}</span></div>
-                            <div class="info-item">${medidaPrincipal}</div>
-                            <div class="info-item"><b>Ângulo de Corte</b><span>${item.angulo_corte || '-'}</span></div>
-                            <div class="info-item"><b>Quantidade</b><span>${item.quantidade || '0'}</span></div>
-                        </div>
-                        
-                        <div class="actions">
-                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">📄 GERAR PDF TÉCNICO</a>
-                            <small style="color: #94a3b8; margin-left: auto;">${item.data || ''}</small>
-                        </div>
-                    </div>
-                `;
-            });
-
-        } catch (err) {
-            console.error("Erro detalhado:", err);
-            lista.innerHTML = `
-                <div style="text-align:center; color: #ef4444; padding: 20px; background: #fee2e2; border-radius: 8px;">
-                    <b>⚠️ Erro de Conexão</b><br>
-                    Não foi possível carregar os dados. Verifique se o servidor está ativo na Render.<br>
-                    <small>${err.message}</small>
-                </div>`;
-        }
-    }
-
-    // Tenta carregar os dados
-    carregar();
-</script>
-</body>
-</html>
