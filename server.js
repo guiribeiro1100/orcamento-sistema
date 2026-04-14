@@ -89,66 +89,74 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
     doc.pipe(res);
 
-    // --- MONTAGEM DO PADRÃO AUTOMÁTICO ---
-    // Ex: DISCO D132x50x11mm Fio Simples Liso
+    // --- LÓGICA DO NOME PADRONIZADO (O QUE VOCÊ PEDIU) ---
     const produtoNome = (item.tipo_produto || '').toUpperCase();
-    const medidas = item.tipo_produto === 'disco' 
-        ? `D${item.diametros.replace(' / ', 'x')}x${item.espessura}mm` 
-        : `${item.dimensoes_lamina}x${item.espessura}mm`;
+    const medidasBase = item.tipo_produto === 'disco' 
+        ? `D${(item.diametros || '').replace(' / ', 'x')}x${item.espessura || ''}mm` 
+        : `${(item.dimensoes_lamina || '').replace(' x ', 'x')}x${item.espessura || ''}mm`;
     
-    const tituloPadrao = `${produtoNome} ${medidas} ${item.tipo_fio || ''} ${item.perfil || ''}`;
+    // Monta: DISCO D132x50x11mm Fio Duplo Ondulado
+    const nomeTecnicoAuto = `${produtoNome} ${medidasBase} ${item.tipo_fio || ''} ${item.perfil || ''}`;
 
     // --- CABEÇALHO ---
-    doc.fillColor('#1e40af').fontSize(18).font('Helvetica-Bold').text('ORÇAMENTO TÉCNICO', { align: 'center' });
-    doc.fontSize(10).fillColor('#64748b').text(`Gerado em: ${item.data}`, { align: 'center' }).moveDown(1);
+    doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('SOLICITAÇÃO DE ORÇAMENTO', { align: 'center' });
+    doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data} | ID: ${item.id}`, { align: 'center' }).moveDown(1);
 
-    // --- TÍTULO PADRONIZADO (O QUE VOCÊ PEDIU) ---
-    doc.rect(40, doc.y, 515, 25).fill('#f1f5f9');
-    doc.fillColor('#1e293b').font('Helvetica-Bold').fontSize(12).text(tituloPadrao, 45, doc.y + 7, { align: 'center' }).moveDown(1.5);
+    // --- LINHA DO NOME PADRONIZADO EM DESTAQUE ---
+    doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(nomeTecnicoAuto, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
 
-    // Função auxiliar para seções
+    // Função para manter o padrão de seções que você gostou
     const criarSecao = (titulo, cor) => {
         doc.rect(40, doc.y, 515, 18).fill(cor);
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text(`  ${titulo}`, 40, doc.y + 4).moveDown(0.5);
         doc.fillColor('#000000').font('Helvetica').fontSize(11).moveDown(0.2);
     };
 
-    // --- SEÇÃO: CLIENTE ---
+    // --- SEÇÃO 1: DADOS DO CLIENTE (MANTIDO) ---
     criarSecao('DADOS DO CLIENTE', '#1e40af');
     doc.text(`CNPJ: ${item.cnpj || '---'}`);
     doc.text(`Cliente/Cargo: ${item.cliente_cargo || '---'}`);
-    doc.text(`WhatsApp: ${item.telefone || '---'}`).moveDown(1);
+    doc.text(`Vendedor: ${item.vendedor || '---'}`);
+    doc.text(`WhatsApp: ${item.telefone || '---'}`);
+    doc.text(`E-mail: ${item.email || '---'}`).moveDown(1);
 
-    // --- SEÇÃO: DETALHES TÉCNICOS ---
-    criarSecao('ESPECIFICAÇÕES DA PEÇA', '#1e40af');
+    // --- SEÇÃO 2: EQUIPAMENTO (MANTIDO) ---
+    criarSecao('EQUIPAMENTO / MÁQUINA', '#1e40af');
     doc.text(`Máquina: ${item.nome_maquina || '---'}`);
-    doc.text(`Cód. Original: ${item.codigo_original || '---'}`);
+    doc.text(`Código Original: ${item.codigo_original || '---'}`).moveDown(1);
+
+    // --- SEÇÃO 3: ESPECIFICAÇÕES COMPLETAS (MANTIDO) ---
+    criarSecao('DETALHES DA PEÇA', '#1e40af');
+    doc.text(`Tipo de Produto: ${produtoNome}`);
     doc.text(`Ângulo de Corte: ${item.angulo_corte || '---'}`);
-    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`);
-    doc.text(`Quantidade: ${item.quantidade || '0'}`).moveDown(1);
+    doc.text(`Tipo de Fio: ${(item.tipo_fio || '---').toUpperCase()}`);
+    doc.text(`Medidas Nominais: ${item.diametros !== " / " ? item.diametros : (item.dimensoes_lamina || item.medidas_usinagem || '---')}`);
+    doc.text(`Espessura: ${item.espessura || '---'}`);
+    doc.text(`Perfil: ${item.perfil || '---'}`);
+    doc.text(`Quantidade: ${item.quantidade || '0'}`);
+    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown(1.5);
 
-    // --- SEÇÃO: RESPOSTA ---
-    criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
-    const textoResposta = item.resposta_vendedor && item.resposta_vendedor.trim() !== "" 
-        ? item.resposta_vendedor 
-        : "Orçamento em fase de análise técnica.";
-    
-    doc.font('Helvetica-Bold').fillColor('#854d0e').text('OBSERVAÇÕES DO VENDEDOR:').moveDown(0.2);
-    doc.font('Helvetica').fillColor('#000000').text(textoResposta, { align: 'justify', width: 500 }).moveDown(1.5);
+    // --- SEÇÃO 4: RESPOSTA DO VENDEDOR (MANTIDO) ---
+    if (item.resposta_vendedor) {
+        criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
+        doc.fillColor('#000000').text(item.resposta_vendedor, { align: 'justify', width: 500 }).moveDown(1);
+    }
 
-    // --- FOTO ---
+    // --- SEÇÃO 5: FOTO (MANTIDO) ---
     if (item.foto) {
         const imgPath = path.join(__dirname, item.foto);
         if (fs.existsSync(imgPath)) {
             doc.addPage();
+            doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e40af').text('IMAGEM DE REFERÊNCIA', { align: 'center' }).moveDown();
             doc.image(imgPath, { fit: [450, 500], align: 'center' });
         }
     }
 
     doc.end();
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor ativo na porta ${PORT}`));
