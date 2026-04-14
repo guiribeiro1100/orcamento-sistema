@@ -54,8 +54,7 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
             aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
             quantidade: b.quantidade || '',
             foto: req.file ? '/uploads/' + req.file.filename : null,
-            resposta_vendedor: '', 
-            status: 'pendente', // Inicia como pendente
+            resposta_vendedor: '', // Campo inicia vazio
             data: new Date().toLocaleString()
         };
 
@@ -70,13 +69,12 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
 // Listar Orçamentos para o Painel
 app.get('/orcamentos', (req, res) => res.json(readDB()));
 
-// Salvar Resposta do Vendedor e Atualizar Status
+// Salvar Resposta do Vendedor
 app.post('/orcamento/:id/resposta', (req, res) => {
     const db = readDB();
     const index = db.findIndex(o => o.id == req.params.id);
     if (index !== -1) {
         db[index].resposta_vendedor = req.body.resposta;
-        db[index].status = 'respondido'; // Muda status ao responder
         saveDB(db);
         res.json({ ok: true });
     } else {
@@ -84,7 +82,7 @@ app.post('/orcamento/:id/resposta', (req, res) => {
     }
 });
 
-// Gerar PDF com Resposta e Formatação Corrigida
+// Gerar PDF com Resposta
 app.get('/orcamento/:id/pdf', (req, res) => {
     const item = readDB().find(o => o.id == req.params.id);
     if (!item) return res.status(404).send('Orçamento não encontrado');
@@ -94,12 +92,13 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
     doc.pipe(res);
 
-    // --- LÓGICA DO NOME PADRONIZADO ---
+    // --- LÓGICA DO NOME PADRONIZADO (O QUE VOCÊ PEDIU) ---
     const produtoNome = (item.tipo_produto || '').toUpperCase();
     const medidasBase = item.tipo_produto === 'disco' 
         ? `D${(item.diametros || '').replace(' / ', 'x')}x${item.espessura || ''}mm` 
         : `${(item.dimensoes_lamina || '').replace(' x ', 'x')}x${item.espessura || ''}mm`;
     
+    // Monta: DISCO D132x50x11mm Fio Duplo Ondulado
     const nomeTecnicoAuto = `${produtoNome} ${medidasBase} ${item.tipo_fio || ''} ${item.perfil || ''}`;
 
     // --- CABEÇALHO ---
@@ -110,14 +109,14 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
     doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(nomeTecnicoAuto, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
 
-    // Função de Seções
+    // Função para manter o padrão de seções que você gostou
     const criarSecao = (titulo, cor) => {
         doc.rect(40, doc.y, 515, 18).fill(cor);
-        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text('  ' + titulo, 40, doc.y + 4).moveDown(0.5);
+        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text(`  ${titulo}`, 40, doc.y + 4).moveDown(0.5);
         doc.fillColor('#000000').font('Helvetica').fontSize(11).moveDown(0.2);
     };
 
-    // --- SEÇÃO 1: CLIENTE ---
+    // --- SEÇÃO 1: DADOS DO CLIENTE (MANTIDO) ---
     criarSecao('DADOS DO CLIENTE', '#1e40af');
     doc.text(`CNPJ: ${item.cnpj || '---'}`);
     doc.text(`Cliente/Cargo: ${item.cliente_cargo || '---'}`);
@@ -125,12 +124,12 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`WhatsApp: ${item.telefone || '---'}`);
     doc.text(`E-mail: ${item.email || '---'}`).moveDown(1);
 
-    // --- SEÇÃO 2: EQUIPAMENTO ---
+    // --- SEÇÃO 2: EQUIPAMENTO (MANTIDO) ---
     criarSecao('EQUIPAMENTO / MÁQUINA', '#1e40af');
     doc.text(`Máquina: ${item.nome_maquina || '---'}`);
     doc.text(`Código Original: ${item.codigo_original || '---'}`).moveDown(1);
 
-    // --- SEÇÃO 3: DETALHES TÉCNICOS ---
+    // --- SEÇÃO 3: ESPECIFICAÇÕES COMPLETAS (MANTIDO) ---
     criarSecao('DETALHES DA PEÇA', '#1e40af');
     doc.text(`Tipo de Produto: ${produtoNome}`);
     doc.text(`Ângulo de Corte: ${item.angulo_corte || '---'}`);
@@ -141,13 +140,13 @@ app.get('/orcamento/:id/pdf', (req, res) => {
     doc.text(`Quantidade: ${item.quantidade || '0'}`);
     doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown(1.5);
 
-    // --- SEÇÃO 4: RESPOSTA DO VENDEDOR ---
+    // --- SEÇÃO 4: RESPOSTA DO VENDEDOR (MANTIDO) ---
     if (item.resposta_vendedor) {
         criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
         doc.fillColor('#000000').text(item.resposta_vendedor, { align: 'justify', width: 500 }).moveDown(1);
     }
 
-    // --- SEÇÃO 5: FOTO ---
+    // --- SEÇÃO 5: FOTO (MANTIDO) ---
     if (item.foto) {
         const imgPath = path.join(__dirname, item.foto);
         if (fs.existsSync(imgPath)) {
@@ -159,6 +158,5 @@ app.get('/orcamento/:id/pdf', (req, res) => {
 
     doc.end();
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor ativo na porta ${PORT}`));
