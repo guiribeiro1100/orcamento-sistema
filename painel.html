@@ -5,51 +5,55 @@
 <title>Painel</title>
 <style>
     body { font-family: Arial; background: #eef2f7; padding: 20px; }
-    .card { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
-    .status { float: right; padding: 4px 10px; border-radius: 4px; color: white; background: #f59e0b; font-size: 12px; }
-    .bloco { background: #f9fafb; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 14px; }
-    .search { width: 100%; max-width: 800px; display: block; margin: 0 auto 20px; padding: 12px; border-radius: 8px; border: 1px solid #ccc; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 800px; margin: auto; margin-bottom: 20px; }
+    .badge { padding: 5px 10px; border-radius: 4px; color: white; font-size: 12px; float: right; }
+    .novo { background: #f59e0b; }
+    .respondido { background: #10b981; }
+    .tech { background: #f8fafc; padding: 10px; border-left: 4px solid #2563eb; margin-top: 10px; }
 </style>
 </head>
 <body>
 
-<input id="busca" class="search" placeholder="🔎 Buscar por CNPJ, contato ou máquina...">
+<h2 style="text-align:center">📊 Gestão de Orçamentos</h2>
 <div id="lista"></div>
 
 <script>
-async function carregar() {
-    const res = await fetch('/orcamentos');
-    const dados = await res.json();
-    render(dados.reverse());
-}
+    async function carregar() {
+        const res = await fetch('/orcamentos');
+        const dados = await res.json();
+        const container = document.getElementById('lista');
+        container.innerHTML = '';
 
-function render(lista) {
-    const container = document.getElementById('lista');
-    container.innerHTML = '';
-    lista.forEach(item => {
-        container.innerHTML += `
-            <div class="card">
-                <div class="header">
-                    <span class="status">${item.status}</span>
+        dados.reverse().forEach(item => {
+            container.innerHTML += `
+                <div class="card">
+                    <span class="badge ${item.status}">${item.status.toUpperCase()}</span>
                     <h3>CNPJ: ${item.cnpj}</h3>
+                    <p><b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor}</p>
+                    <div class="tech">
+                        <b>Produto:</b> ${item.tipo_produto.toUpperCase()} | <b>Qtd:</b> ${item.quantidade}<br>
+                        <b>Ângulo de Corte:</b> ${item.angulo_corte || '-'}<br>
+                        <b>Aplicação:</b> ${item.aplicacao_final}
+                    </div>
+                    <div style="margin-top:10px">
+                        <button onclick="mudarStatus(${item.id}, 'respondido')">Marcar Respondido</button>
+                        <a href="/orcamento/${item.id}/pdf" target="_blank">📄 Gerar PDF</a>
+                    </div>
                 </div>
-                <div class="bloco">
-                    <b>Contato:</b> ${item.cliente_cargo} | <b>Vendedor:</b> ${item.vendedor}<br>
-                    <b>Email:</b> ${item.email} | <b>Telefone:</b> ${item.telefone}
-                </div>
-                <div class="bloco" style="background: #e0f2fe;">
-                    <b>Produto:</b> ${item.tipo_produto.toUpperCase()} | <b>Qtd:</b> ${item.quantidade}<br>
-                    <b>Ângulo de corte:</b> ${item.tipo_produto === 'disco' ? item.angulo_corte : item.angulo_corte_lamina || '-'}<br>
-                    <b>Aplicação:</b> ${item.aplicacao_final}
-                </div>
-                <a href="/orcamento/${item.id}/pdf" target="_blank">📄 Ver PDF Completo</a>
-            </div>
-        `;
-    });
-}
+            `;
+        });
+    }
 
-carregar();
+    async function mudarStatus(id, st) {
+        await fetch('/status/'+id, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: st}) 
+        });
+        carregar();
+    }
+
+    carregar();
 </script>
 </body>
 </html>
