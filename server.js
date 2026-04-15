@@ -10,51 +10,44 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const uploadPath = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+// Configuração de Pastas com Caminho Absoluto
+const uploadPath = path.resolve(__dirname, 'uploads');
+if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 app.use('/uploads', express.static(uploadPath));
 app.use(express.static(__dirname));
 
-const DB_FILE = path.join(__dirname, 'data.json');
-const readDB = () => {
-    try { return fs.existsSync(DB_FILE) ? JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) : []; } 
-    catch (e) { return []; }
-};
-const saveDB = (data) => fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-
-const upload = multer({ storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadPath),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-})});
 const DB_FILE = path.resolve(__dirname, 'data.json');
 
-// Função de leitura robusta
+// Funções de Banco de Dados Protegidas
 const readDB = () => {
     try {
         if (!fs.existsSync(DB_FILE)) {
             fs.writeFileSync(DB_FILE, JSON.stringify([], null, 2));
             return [];
         }
-        const content = fs.readFileSync(DB_FILE, 'utf8');
-        return JSON.parse(content);
+        return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     } catch (e) {
-        console.error("Erro ao ler banco de dados:", e);
+        console.error("Erro na leitura:", e);
         return [];
     }
 };
 
-// Função de salvamento com verificação
 const saveDB = (data) => {
     try {
-        const content = JSON.stringify(data, null, 2);
-        fs.writeFileSync(DB_FILE, content, 'utf8');
-        console.log("Dados salvos com sucesso no caminho:", DB_FILE);
+        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
         return true;
     } catch (e) {
-        console.error("ERRO FATAL AO SALVAR:", e);
+        console.error("Erro no salvamento:", e);
         return false;
     }
 };
+
+const upload = multer({ storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadPath),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+})});
+
+// --- ROTAS ---
 
 app.post('/orcamento', upload.single('foto'), (req, res) => {
     try {
@@ -86,9 +79,12 @@ app.post('/orcamento', upload.single('foto'), (req, res) => {
             data: new Date().toLocaleString()
         };
         db.push(novo);
-        saveDB(db);
-        res.json({ ok: true });
-    } catch (err) { res.status(500).json({ error: "Erro ao salvar" }); }
+        if (saveDB(db)) {
+            res.json({ ok: true });
+        } else {
+            res.status(500).json({ error: "Erro ao gravar arquivo" });
+        }
+    } catch (err) { res.status(500).json({ error: "Erro interno" }); }
 });
 
 app.get('/orcamentos', (req, res) => res.json(readDB()));
@@ -106,82 +102,55 @@ app.post('/orcamento/:id/resposta', (req, res) => {
 
 app.get('/orcamento/:id/pdf', (req, res) => {
     const item = readDB().find(o => o.id == req.params.id);
-    if (!item) return res.status(404).send('Orçamento não encontrado');
-
+    if (!item) return res.status(404).send('Não encontrado');
+    
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
     doc.pipe(res);
 
-    // --- LÓGICA DO NOME PADRONIZADO (CORRIGIDA) ---
-    const produtoNome = (item.tipo_produto || '').toUpperCase();
-    const medidasBase = item.tipo_produto === 'disco' 
+    const prod = (item.tipo_produto || '').toUpperCase();
+    const med = item.tipo_produto === 'disco' 
         ? `D${(item.diametros || '').replace(' / ', 'x')}x${item.espessura || ''}mm` 
         : `${(item.dimensoes_lamina || '').replace(' x ', 'x')}x${item.espessura || ''}mm`;
     
-    // Agora inclui: PRODUTO + MEDIDAS + FIO + PERFIL + NOME_DO_PERFIL
-    // Ex: DISCO D132x50x11mm Fio Duplo Perfil dente_serra
-    const nomeTecnicoAuto = `${produtoNome} ${medidasBase} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
+    // Título solicitado: DISCO D132x50x11mm Fio [tipo] Perfil [tipo]
+    const tituloPadrao = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''}`;
 
-    // --- CABEÇALHO ---
     doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('SOLICITAÇÃO DE ORÇAMENTO', { align: 'center' });
-    doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data} | ID: ${item.id}`, { align: 'center' }).moveDown(1);
-
-    // --- LINHA DO NOME PADRONIZADO EM DESTAQUE ---
+    doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data} | ID: ${item.id}`, { align: 'center' }).moveDown();
+    
     doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(nomeTecnicoAuto, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(tituloPadrao, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
 
-    // Função de seções (Igual a que você aprovou)
     const criarSecao = (titulo, cor) => {
         doc.rect(40, doc.y, 515, 18).fill(cor);
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text('  ' + titulo, 40, doc.y + 4).moveDown(0.5);
         doc.fillColor('#000000').font('Helvetica').fontSize(11).moveDown(0.2);
     };
 
-    // --- SEÇÃO 1: DADOS DO CLIENTE ---
     criarSecao('DADOS DO CLIENTE', '#1e40af');
-    doc.text(`CNPJ: ${item.cnpj || '---'}`);
-    doc.text(`Cliente/Cargo: ${item.cliente_cargo || '---'}`);
-    doc.text(`Vendedor: ${item.vendedor || '---'}`);
-    doc.text(`WhatsApp: ${item.telefone || '---'}`);
-    doc.text(`E-mail: ${item.email || '---'}`).moveDown(1);
+    doc.text(`CNPJ: ${item.cnpj || '---'} | Vendedor: ${item.vendedor || '---'}`);
+    doc.text(`Cliente: ${item.cliente_cargo || '---'} | Zap: ${item.telefone || '---'}`).moveDown();
 
-    // --- SEÇÃO 2: EQUIPAMENTO / MÁQUINA ---
-    criarSecao('EQUIPAMENTO / MÁQUINA', '#1e40af');
-    doc.text(`Máquina: ${item.nome_maquina || '---'}`);
-    doc.text(`Código Original: ${item.codigo_original || '---'}`);
-    doc.text(`Material: ${item.material || '---'}`).moveDown(1);
+    criarSecao('ESPECIFICAÇÕES TÉCNICAS', '#1e40af');
+    doc.text(`Máquina: ${item.nome_maquina || '---'} | Material: ${item.material || '---'}`);
+    doc.text(`Ângulo: ${item.angulo_corte || '---'} | Quantidade: ${item.quantidade || '0'}`);
+    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown();
 
-    // --- SEÇÃO 3: DETALHES TÉCNICOS ---
-    criarSecao('DETALHES DA PEÇA', '#1e40af');
-    doc.text(`Tipo de Produto: ${produtoNome}`);
-    doc.text(`Ângulo de Corte: ${item.angulo_corte || '---'}`);
-    doc.text(`Tipo de Fio: ${(item.tipo_fio || '---').toUpperCase()}`);
-    doc.text(`Medidas Nominais: ${item.diametros !== " / " ? item.diametros : (item.dimensoes_lamina || item.medidas_usinagem || '---')}`);
-    doc.text(`Espessura: ${item.espessura || '---'}`);
-    doc.text(`Perfil: ${item.perfil || '---'}`);
-    doc.text(`Quantidade: ${item.quantidade || '0'}`);
-    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown(1.5);
-
-    // --- SEÇÃO 4: RESPOSTA DO VENDEDOR ---
     if (item.resposta_vendedor) {
         criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
-        doc.fillColor('#000000').text(item.resposta_vendedor, { align: 'justify', width: 500 }).moveDown(1);
+        doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
     }
 
-    // --- SEÇÃO 5: FOTO ---
     if (item.foto) {
-        const imgPath = path.join(__dirname, item.foto);
+        const imgPath = path.resolve(__dirname, item.foto.startsWith('/') ? item.foto.substring(1) : item.foto);
         if (fs.existsSync(imgPath)) {
             doc.addPage();
-            doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e40af').text('IMAGEM DE REFERÊNCIA', { align: 'center' }).moveDown();
             doc.image(imgPath, { fit: [450, 500], align: 'center' });
         }
     }
-
     doc.end();
 });
 
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
