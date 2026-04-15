@@ -26,6 +26,35 @@ const upload = multer({ storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadPath),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 })});
+const DB_FILE = path.resolve(__dirname, 'data.json');
+
+// Função de leitura robusta
+const readDB = () => {
+    try {
+        if (!fs.existsSync(DB_FILE)) {
+            fs.writeFileSync(DB_FILE, JSON.stringify([], null, 2));
+            return [];
+        }
+        const content = fs.readFileSync(DB_FILE, 'utf8');
+        return JSON.parse(content);
+    } catch (e) {
+        console.error("Erro ao ler banco de dados:", e);
+        return [];
+    }
+};
+
+// Função de salvamento com verificação
+const saveDB = (data) => {
+    try {
+        const content = JSON.stringify(data, null, 2);
+        fs.writeFileSync(DB_FILE, content, 'utf8');
+        console.log("Dados salvos com sucesso no caminho:", DB_FILE);
+        return true;
+    } catch (e) {
+        console.error("ERRO FATAL AO SALVAR:", e);
+        return false;
+    }
+};
 
 app.post('/orcamento', upload.single('foto'), (req, res) => {
     try {
