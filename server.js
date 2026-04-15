@@ -4,153 +4,222 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configuração de Pastas com Caminho Absoluto
+// =========================
+// 🔥 SUPABASE
+// =========================
+
+const supabase = createClient(
+    'https://vhrnuejlubfxmlownydm.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocm51ZWpsdWJmeG1sb3dueWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNDk2MDgsImV4cCI6MjA5MTgyNTYwOH0.JFEYbnwD3IkwHT3IB2jM-ZPLa1PV-lNJBPQpgRvjuLI'
+);
+
+// =========================
+// 📁 UPLOAD
+// =========================
+
 const uploadPath = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+
 app.use('/uploads', express.static(uploadPath));
 app.use(express.static(__dirname));
 
-const DB_FILE = path.resolve(__dirname, 'data.json');
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadPath),
+        filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+    })
+});
 
-// Funções de Banco de Dados Protegidas
-const readDB = () => {
+// =========================
+// 🚀 CRIAR ORÇAMENTO
+// =========================
+
+app.post('/orcamento', upload.single('foto'), async (req, res) => {
     try {
-        if (!fs.existsSync(DB_FILE)) {
-            fs.writeFileSync(DB_FILE, JSON.stringify([], null, 2));
-            return [];
-        }
-        return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    } catch (e) {
-        console.error("Erro na leitura:", e);
-        return [];
-    }
-};
-
-const saveDB = (data) => {
-    try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-        return true;
-    } catch (e) {
-        console.error("Erro no salvamento:", e);
-        return false;
-    }
-};
-
-const upload = multer({ storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadPath),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-})});
-
-// --- ROTAS ---
-
-app.post('/orcamento', upload.single('foto'), (req, res) => {
-    try {
-        const db = readDB();
         const b = req.body;
+
         const novo = {
             id: Date.now(),
+
             cnpj: b.cnpj || '',
             cliente_cargo: b.cliente_cargo || '',
             vendedor: b.vendedor || '',
             email: b.email || '',
             telefone: b.telefone || '',
+
             tipo_produto: b.tipo_produto || '',
             nome_maquina: b.nome_maquina || '',
             codigo_original: b.codigo_original || '',
+
             material: b.material === 'outro' ? b.material_outro : b.material,
-            angulo_corte: b.angulo_corte || b.angulo_corte_lamina || '',
-            tipo_fio: b.tipo_fio || '',
-            diametros: `${b.diametro_externo || ''} / ${b.diametro_interno || ''}`,
-            espessura: b.espessura_disco || b.espessura_lamina || '',
-            perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
-            dimensoes_lamina: `${b.largura || ''} x ${b.comprimento || ''}`,
-            medidas_usinagem: b.medidas_usinagem || '',
             aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
+
             quantidade: b.quantidade || '',
+
+            // DISCO
+            diametro_externo: b.diametro_externo || '',
+            diametro_interno: b.diametro_interno || '',
+            espessura_disco: b.espessura_disco || '',
+            tipo_fio: b.tipo_fio || '',
+            tipo_fio_desc: b.tipo_fio_desc || '',
+            obs_disco: b.obs_disco || '',
+
+            // LAMINA
+            largura: b.largura || '',
+            comprimento: b.comprimento || '',
+            espessura_lamina: b.espessura_lamina || '',
+            obs_lamina: b.obs_lamina || '',
+
+            // USINAGEM
+            medidas_usinagem: b.medidas_usinagem || '',
+
             foto: req.file ? '/uploads/' + req.file.filename : null,
-            resposta_vendedor: '', 
+
+            resposta_vendedor: '',
             status: 'pendente',
             data: new Date().toLocaleString()
         };
-        db.push(novo);
-        if (saveDB(db)) {
-            res.json({ ok: true });
-        } else {
-            res.status(500).json({ error: "Erro ao gravar arquivo" });
+
+        const { error } = await supabase
+            .from('orcamentos')
+            .insert([novo]);
+
+        if (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Erro ao salvar' });
         }
-    } catch (err) { res.status(500).json({ error: "Erro interno" }); }
-});
 
-app.get('/orcamentos', (req, res) => res.json(readDB()));
-
-app.post('/orcamento/:id/resposta', (req, res) => {
-    const db = readDB();
-    const index = db.findIndex(o => o.id == req.params.id);
-    if (index !== -1) {
-        db[index].resposta_vendedor = req.body.resposta;
-        db[index].status = 'respondido';
-        saveDB(db);
         res.json({ ok: true });
-    } else { res.status(404).send('Não encontrado'); }
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro interno' });
+    }
 });
 
-app.get('/orcamento/:id/pdf', (req, res) => {
-    const item = readDB().find(o => o.id == req.params.id);
-    if (!item) return res.status(404).send('Não encontrado');
-    
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+// =========================
+// 📋 LISTAR
+// =========================
+
+app.get('/orcamentos', async (req, res) => {
+    const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .order('id', { ascending: false });
+
+    if (error) return res.status(500).json({ error });
+
+    res.json(data);
+});
+
+// =========================
+// 💬 RESPONDER
+// =========================
+
+app.post('/orcamento/:id/resposta', async (req, res) => {
+
+    const { error } = await supabase
+        .from('orcamentos')
+        .update({
+            resposta_vendedor: req.body.resposta,
+            status: 'respondido'
+        })
+        .eq('id', req.params.id);
+
+    if (error) return res.status(500).json({ error });
+
+    res.json({ ok: true });
+});
+
+// =========================
+// 📄 PDF
+// =========================
+
+app.get('/orcamento/:id/pdf', async (req, res) => {
+
+    const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .eq('id', req.params.id)
+        .single();
+
+    if (error || !data) return res.status(404).send('Não encontrado');
+
+    const item = data;
+
+    const doc = new PDFDocument({ margin: 40 });
     res.setHeader('Content-Type', 'application/pdf');
     doc.pipe(res);
 
-    const prod = (item.tipo_produto || '').toUpperCase();
-    const med = item.tipo_produto === 'disco' 
-        ? `D${(item.diametros || '').replace(' / ', 'x')}x${item.espessura || ''}mm` 
-        : `${(item.dimensoes_lamina || '').replace(' x ', 'x')}x${item.espessura || ''}mm`;
-    
-    // Título solicitado: DISCO D132x50x11mm Fio [tipo] Perfil [tipo]
-    const tituloPadrao = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''}`;
+    doc.fontSize(18).text('SOLICITAÇÃO DE ORÇAMENTO', { align: 'center' });
+    doc.moveDown();
 
-    doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('SOLICITAÇÃO DE ORÇAMENTO', { align: 'center' });
-    doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data} | ID: ${item.id}`, { align: 'center' }).moveDown();
-    
-    doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(tituloPadrao, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
+    doc.text(`Cliente: ${item.cliente_cargo}`);
+    doc.text(`Empresa: ${item.cnpj}`);
+    doc.text(`Telefone: ${item.telefone}`);
+    doc.text(`Vendedor: ${item.vendedor}`);
+    doc.moveDown();
 
-    const criarSecao = (titulo, cor) => {
-        doc.rect(40, doc.y, 515, 18).fill(cor);
-        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text('  ' + titulo, 40, doc.y + 4).moveDown(0.5);
-        doc.fillColor('#000000').font('Helvetica').fontSize(11).moveDown(0.2);
-    };
+    doc.text(`Material: ${item.material}`);
+    doc.text(`Aplicação: ${item.aplicacao_final}`);
+    doc.text(`Quantidade: ${item.quantidade}`);
+    doc.text(`Máquina: ${item.nome_maquina}`);
+    doc.text(`Código: ${item.codigo_original}`);
+    doc.moveDown();
 
-    criarSecao('DADOS DO CLIENTE', '#1e40af');
-    doc.text(`CNPJ: ${item.cnpj || '---'} | Vendedor: ${item.vendedor || '---'}`);
-    doc.text(`Cliente: ${item.cliente_cargo || '---'} | Zap: ${item.telefone || '---'}`).moveDown();
-
-    criarSecao('ESPECIFICAÇÕES TÉCNICAS', '#1e40af');
-    doc.text(`Máquina: ${item.nome_maquina || '---'} | Material: ${item.material || '---'}`);
-    doc.text(`Ângulo: ${item.angulo_corte || '---'} | Quantidade: ${item.quantidade || '0'}`);
-    doc.text(`Aplicação: ${item.aplicacao_final || '---'}`).moveDown();
-
-    if (item.resposta_vendedor) {
-        criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
-        doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
+    if (item.tipo_produto === 'disco') {
+        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
+        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
+        doc.text(`Espessura: ${item.espessura_disco}`);
+        doc.text(`Tipo de fio: ${item.tipo_fio}`);
+        doc.text(`Descrição do fio: ${item.tipo_fio_desc}`);
+        doc.text(`Obs: ${item.obs_disco}`);
     }
 
+    if (item.tipo_produto === 'lamina') {
+        doc.text(`Largura: ${item.largura}`);
+        doc.text(`Comprimento: ${item.comprimento}`);
+        doc.text(`Espessura: ${item.espessura_lamina}`);
+        doc.text(`Obs: ${item.obs_lamina}`);
+    }
+
+    if (item.tipo_produto === 'usinagem') {
+        doc.text(`Medidas: ${item.medidas_usinagem}`);
+    }
+
+    doc.moveDown();
+    doc.text('Resposta:');
+    doc.text(item.resposta_vendedor || 'Ainda não respondido');
+
+    // 📸 ANEXO
     if (item.foto) {
-        const imgPath = path.resolve(__dirname, item.foto.startsWith('/') ? item.foto.substring(1) : item.foto);
-        if (fs.existsSync(imgPath)) {
-            doc.addPage();
-            doc.image(imgPath, { fit: [450, 500], align: 'center' });
+        try {
+            const imgPath = path.resolve(__dirname, item.foto.replace('/uploads/', 'uploads/'));
+            if (fs.existsSync(imgPath)) {
+                doc.addPage();
+                doc.text('Anexo:');
+                doc.moveDown();
+                doc.image(imgPath, { fit: [400, 400], align: 'center' });
+            }
+        } catch (e) {
+            console.log('Erro imagem:', e);
         }
     }
+
     doc.end();
 });
 
+// =========================
+// 🚀 START
+// =========================
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log('Rodando na porta ' + PORT));
