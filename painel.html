@@ -1,159 +1,242 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Orçamentos Técnicos</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
-        .container { max-width: 900px; margin: auto; }
-        h2 { text-align: center; color: #1e40af; margin-bottom: 30px; }
-        
-        /* BARRA DE BUSCA */
-        .busca-container { margin-bottom: 25px; }
-        #busca { width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #cbd5e1; font-size: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); outline: none; transition: border 0.3s; }
-        #busca:focus { border-color: #3b82f6; }
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
+const { createClient } = require('@supabase/supabase-js');
 
-        .card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-left: 8px solid #3b82f6; position: relative; }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 15px; }
-        .cnpj-title { margin: 0; color: #1e40af; font-size: 1.4rem; }
-        
-        .info-section { margin-bottom: 15px; padding: 10px; border-radius: 8px; background: #f8fafc; }
-        .section-label { display: block; font-size: 0.75rem; font-weight: bold; color: #64748b; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
-        
-        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
-        .item b { display: block; font-size: 0.85rem; color: #475569; }
-        .item span { font-size: 1rem; color: #1e293b; font-weight: 500; }
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
 
-        .caixa-resposta { background: #fffbeb; padding: 15px; border-radius: 10px; border: 1px solid #fef08a; margin: 20px 0; }
-        textarea { width: 100%; border: 1px solid #facc15; border-radius: 6px; padding: 10px; font-family: inherit; resize: vertical; box-sizing: border-box; }
-        
-        .btn-salvar { background: #ca8a04; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; transition: background 0.3s; }
-        .btn-salvar:hover { background: #a16207; }
-        
-        .btn-pdf { background: #1e40af; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; display: inline-block; transition: transform 0.2s; }
-        .btn-pdf:hover { transform: scale(1.02); background: #1d4ed8; }
-        
-        .status-badge { padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
-        .pendente { background: #fee2e2; color: #991b1b; }
-        .respondido { background: #dcfce7; color: #166534; }
-    </style>
-</head>
-<body>
+// =========================
+// 🔥 SUPABASE
+// =========================
 
-<div class="container">
-    <h2>📋 Gestão de Orçamentos Técnicos</h2>
+const supabase = createClient(
+    'https://vhrnuejlubfxmlownydm.supabase.co',
+    'SUA_KEY_AQUI'
+);
 
-    <div class="busca-container">
-        <input type="text" id="busca" onkeyup="filtrar()" placeholder="🔍 Buscar por CNPJ, Vendedor, Máquina, Material ou Ângulo...">
-    </div>
+// =========================
+// 📁 UPLOAD LOCAL
+// =========================
 
-    <div id="lista">
-        <p style="text-align: center;">Buscando orçamentos...</p>
-    </div>
-</div>
+const uploadPath = path.resolve(__dirname, 'uploads');
+if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 
-<script>
-    async function carregar() {
-        const lista = document.getElementById('lista');
-        try {
-            const res = await fetch('/orcamentos');
-            const dados = await res.json();
-            
-            if (!dados || dados.length === 0) {
-                lista.innerHTML = "<p style='text-align:center;'>Nenhum orçamento encontrado.</p>";
-                return;
-            }
+app.use('/uploads', express.static(uploadPath));
 
-            lista.innerHTML = '';
-            [...dados].reverse().forEach(item => {
-                const isRespondido = item.status === 'respondido';
-                
-                lista.innerHTML += `
-                    <div class="card" style="${isRespondido ? 'border-left-color: #22c55e;' : ''}">
-                        <div class="card-header">
-                            <div>
-                                <h3 class="cnpj-title">CNPJ: ${item.cnpj || '---'}</h3>
-                                <small style="color: #64748b">ID: ${item.id} | Data: ${item.data}</small>
-                            </div>
-                            <span class="status-badge ${isRespondido ? 'respondido' : 'pendente'}">
-                                ${isRespondido ? '✅ RESPONDIDO' : '⏳ PENDENTE'}
-                            </span>
-                        </div>
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadPath),
+        filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+    })
+});
 
-                        <div class="info-section">
-                            <span class="section-label">👤 Identificação</span>
-                            <div class="data-grid">
-                                <div class="item"><b>Vendedor</b><span>${item.vendedor || '---'}</span></div>
-                                <div class="item"><b>Cliente/Cargo</b><span>${item.cliente_cargo || '---'}</span></div>
-                                <div class="item"><b>WhatsApp</b><span>${item.telefone || '---'}</span></div>
-                            </div>
-                        </div>
+// =========================
+// 🌐 ROTAS HTML
+// =========================
 
-                        <div class="info-section">
-                            <span class="section-label">⚙️ Equipamento e Material</span>
-                            <div class="data-grid">
-                                <div class="item"><b>Máquina</b><span>${item.nome_maquina || '---'}</span></div>
-                                <div class="item"><b>Cód. Original</b><span>${item.codigo_original || '---'}</span></div>
-                                <div class="item"><b>Material</b><span style="color:#e11d48; font-weight:bold;">${item.material || '---'}</span></div>
-                            </div>
-                        </div>
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'form.html'));
+});
 
-                        <div class="info-section">
-                            <span class="section-label">🔧 Especificações Técnicas</span>
-                            <div class="data-grid">
-                                <div class="item"><b>Tipo</b><span>${(item.tipo_produto || '').toUpperCase()}</span></div>
-                                <div class="item"><b>Ângulo</b><span>${item.angulo_corte || '---'}</span></div>
-                                <div class="item"><b>Fio</b><span>${item.tipo_fio || '---'}</span></div>
-                                <div class="item"><b>Espessura</b><span>${item.espessura || '---'}</span></div>
-                                <div class="item"><b>Perfil</b><span>${item.perfil || '---'}</span></div>
-                                <div class="item"><b>Quantidade</b><span>${item.quantidade || '0'}</span></div>
-                            </div>
-                        </div>
+app.get('/painel', (req, res) => {
+    res.sendFile(path.join(__dirname, 'painel.html'));
+});
 
-                        <div class="caixa-resposta">
-                            <label style="font-weight:bold; color: #854d0e;">✍️ Resposta do Vendedor:</label>
-                            <textarea id="res_${item.id}" rows="3" placeholder="Digite aqui o orçamento para sair no PDF...">${item.resposta_vendedor || ''}</textarea>
-                            <button class="btn-salvar" onclick="salvarResposta(${item.id})">
-                                ${isRespondido ? 'ATUALIZAR RESPOSTA' : 'SALVAR E MARCAR COMO RESPONDIDO'}
-                            </button>
-                        </div>
+// =========================
+// 🚀 CRIAR ORÇAMENTO
+// =========================
 
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            ${item.foto ? `<a href="${item.foto}" target="_blank" style="text-decoration:none;">🖼️ Ver Foto Anexada</a>` : '<span></span>'}
-                            <a href="/orcamento/${item.id}/pdf" target="_blank" class="btn-pdf">GERAR PDF TÉCNICO</a>
-                        </div>
-                    </div>
-                `;
-            });
-        } catch (e) {
-            lista.innerHTML = "<p style='color:red; text-align:center;'>Erro ao carregar dados do servidor.</p>";
+app.post('/orcamento', upload.single('foto'), async (req, res) => {
+    try {
+        const b = req.body;
+
+        const novo = {
+            cnpj: b.cnpj || '',
+            vendedor: b.vendedor || '',
+            cliente_cargo: b.cliente_cargo || '',
+            telefone: b.telefone || '',
+            email: b.email || '',
+            tipo_produto: b.tipo_produto || '',
+            nome_maquina: b.nome_maquina || '',
+            codigo_original: b.codigo_original || '',
+            material: b.material === 'outro' ? b.material_outro : b.material,
+            angulo_corte: b.angulo_corte || b.angulo_corte_lamina || '',
+            tipo_fio: b.tipo_fio || '',
+            perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
+            quantidade: b.quantidade || '',
+            diametro_externo: b.diametro_externo || '',
+            diametro_interno: b.diametro_interno || '',
+            espessura_disco: b.espessura_disco || '',
+            largura: b.largura || '',
+            comprimento: b.comprimento || '',
+            espessura_lamina: b.espessura_lamina || '',
+            medidas_usinagem: b.medidas_usinagem || '',
+            aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
+
+            // 🔥 FOTO GARANTIDA
+            foto: req.file ? '/uploads/' + req.file.filename : null,
+
+            resposta_vendedor: '',
+            status: 'pendente',
+            data: new Date().toLocaleString()
+        };
+
+        const { error } = await supabase
+            .from('orcamentos')
+            .insert([novo]);
+
+        if (error) throw error;
+
+        res.json({ ok: true });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// =========================
+// 📋 LISTAR
+// =========================
+
+app.get('/orcamentos', async (req, res) => {
+    const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .order('id', { ascending: false });
+
+    if (error) return res.status(500).json({ error });
+
+    res.json(data);
+});
+
+// =========================
+// 💬 RESPONDER
+// =========================
+
+app.post('/orcamento/:id/resposta', async (req, res) => {
+    const { error } = await supabase
+        .from('orcamentos')
+        .update({
+            resposta_vendedor: req.body.resposta,
+            status: 'respondido'
+        })
+        .eq('id', req.params.id);
+
+    if (error) return res.status(500).json({ error });
+
+    res.json({ ok: true });
+});
+
+// =========================
+// 📄 PDF (IMAGEM 100%)
+// =========================
+
+app.get('/orcamento/:id/pdf', async (req, res) => {
+    try {
+        const { data: item, error } = await supabase
+            .from('orcamentos')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+
+        if (error || !item) return res.status(404).send('Nao encontrado');
+
+        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        res.setHeader('Content-Type', 'application/pdf');
+        doc.pipe(res);
+
+        const prod = (item.tipo_produto || '').toUpperCase();
+
+        let med = '';
+        if (item.tipo_produto === 'disco') {
+            med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
+        } else if (item.tipo_produto === 'lamina') {
+            med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
+        } else {
+            med = item.medidas_usinagem || '';
         }
+
+        const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
+
+        doc.fillColor('#1e40af')
+           .fontSize(20)
+           .font('Helvetica-Bold')
+           .text('ORCAMENTO TECNICO', { align: 'center' });
+
+        doc.fontSize(10)
+           .fillColor('#64748b')
+           .text(`Data: ${item.data || '-'}`, { align: 'center' })
+           .moveDown();
+
+        doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
+
+        doc.fillColor('#0f172a')
+           .font('Helvetica-Bold')
+           .fontSize(12)
+           .text(titulo, 40, doc.y + 7, { align: 'center' })
+           .moveDown(1.5);
+
+        const criarSecao = (t, c) => {
+            doc.rect(40, doc.y, 515, 18).fill(c);
+            doc.fillColor('#ffffff')
+               .font('Helvetica-Bold')
+               .fontSize(11)
+               .text('  ' + t, 40, doc.y + 4)
+               .moveDown(0.5);
+
+            doc.fillColor('#000000')
+               .font('Helvetica')
+               .fontSize(11)
+               .moveDown(0.2);
+        };
+
+        criarSecao('DADOS DO CLIENTE', '#1e40af');
+        doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
+           .moveDown();
+
+        criarSecao('DETALHES TECNICOS', '#1e40af');
+        doc.text(`Maquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
+        doc.text(`Fio: ${item.tipo_fio || '-'} | Perfil: ${item.perfil || '-'}`);
+        doc.text(`Quantidade: ${item.quantidade || '-'} | Aplicacao: ${item.aplicacao_final || '-'}`)
+           .moveDown();
+
+        if (item.resposta_vendedor) {
+            criarSecao('RESPOSTA', '#ca8a04');
+            doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
+        }
+
+        // 🔥 IMAGEM FINAL (FUNCIONA SEM ERRO)
+        if (item.foto) {
+            const caminho = path.join(__dirname, item.foto);
+
+            if (fs.existsSync(caminho)) {
+                doc.addPage();
+                doc.image(caminho, {
+                    fit: [450, 500],
+                    align: 'center'
+                });
+            }
+        }
+
+        doc.end();
+
+    } catch (e) {
+        console.log(e);
+        res.status(500).send("Erro no PDF");
     }
+});
 
-    async function salvarResposta(id) {
-        const texto = document.getElementById(`res_${id}`).value;
-        try {
-            await fetch(`/orcamento/${id}/resposta`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ resposta: texto })
-            });
-            alert("Resposta salva!");
-            carregar();
-        } catch (e) { alert("Erro ao salvar."); }
-    }
+// =========================
+// 🚀 START
+// =========================
 
-    function filtrar() {
-        const termo = document.getElementById('busca').value.toLowerCase();
-        const cards = document.getElementsByClassName('card');
-        Array.from(cards).forEach(card => {
-            card.style.display = card.innerText.toLowerCase().includes(termo) ? "block" : "none";
-        });
-    }
-
-    carregar();
-</script>
-
-</body>
-</html>
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

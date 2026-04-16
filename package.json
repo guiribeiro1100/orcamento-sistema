@@ -18,5 +18,14 @@
     "express": "^5.2.1",
     "multer": "^2.1.1",
     "pdfkit": "^0.18.0"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guiribeiro1100/orcamento-sistema.git"
+  },
+  "bugs": {
+    "url": "https://github.com/guiribeiro1100/orcamento-sistema/issues"
+  },
+  "homepage": "https://github.com/guiribeiro1100/orcamento-sistema#readme"
 }
