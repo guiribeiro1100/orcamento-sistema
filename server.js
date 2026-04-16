@@ -4,78 +4,157 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
-const { createClient } = require('@supabase/supabase-client');
+const { createClient } = require('@supabase/supabase-js'); // ✅ CORRETO
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
 
-// Substitua APENAS o texto entre as aspas simples
-const supabaseUrl = 'SUA_URL_AQUI';
-const supabaseKey = 'SUA_CHAVE_AQUI';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// =========================
+// 🔥 SUPABASE
+// =========================
+
+const supabase = createClient(
+    'https://vhrnuejlubfxmlownydm.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocm51ZWpsdWJmeG1sb3dueWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNDk2MDgsImV4cCI6MjA5MTgyNTYwOH0.JFEYbnwD3IkwHT3IB2jM-ZPLa1PV-lNJBPQpgRvjuLI'
+);
+
+// =========================
+// 📁 UPLOAD LOCAL
+// =========================
 
 const uploadPath = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
-app.use('/uploads', express.static(uploadPath));
-app.use(express.static(__dirname));
 
-const upload = multer({ storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadPath),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-})});
+app.use('/uploads', express.static(uploadPath));
+
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadPath),
+        filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+    })
+});
+
+// =========================
+// 🌐 ROTAS HTML
+// =========================
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'form.html'));
+});
+
+app.get('/painel', (req, res) => {
+    res.sendFile(path.join(__dirname, 'painel.html'));
+});
+
+// =========================
+// 🚀 CRIAR ORÇAMENTO
+// =========================
 
 app.post('/orcamento', upload.single('foto'), async (req, res) => {
     try {
         const b = req.body;
-        const { error } = await supabase.from('orcamentos').insert([{
-            cnpj: b.cnpj,
-            vendedor: b.vendedor,
-            cliente_cargo: b.cliente_cargo,
-            telefone: b.telefone,
-            email: b.email,
-            tipo_produto: b.tipo_produto,
-            nome_maquina: b.nome_maquina,
-            codigo_original: b.codigo_original,
+
+        const novo = {
+            id: Date.now(),
+
+            cnpj: b.cnpj || '',
+            vendedor: b.vendedor || '',
+            cliente_cargo: b.cliente_cargo || '',
+            telefone: b.telefone || '',
+            email: b.email || '',
+
+            tipo_produto: b.tipo_produto || '',
+            nome_maquina: b.nome_maquina || '',
+            codigo_original: b.codigo_original || '',
+
             material: b.material === 'outro' ? b.material_outro : b.material,
-            angulo_corte: b.angulo_corte || b.angulo_corte_lamina,
-            tipo_fio: b.tipo_fio,
+            angulo_corte: b.angulo_corte || b.angulo_corte_lamina || '',
+            tipo_fio: b.tipo_fio || '',
             perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
-            quantidade: b.quantidade,
-            diametro_externo: b.diametro_externo,
-            diametro_interno: b.diametro_interno,
-            espessura_disco: b.espessura_disco,
-            largura: b.largura,
-            comprimento: b.comprimento,
-            espessura_lamina: b.espessura_lamina,
-            medidas_usinagem: b.medidas_usinagem,
+
+            quantidade: b.quantidade || '',
+
+            diametro_externo: b.diametro_externo || '',
+            diametro_interno: b.diametro_interno || '',
+            espessura_disco: b.espessura_disco || '',
+
+            largura: b.largura || '',
+            comprimento: b.comprimento || '',
+            espessura_lamina: b.espessura_lamina || '',
+
+            medidas_usinagem: b.medidas_usinagem || '',
+
             aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
+
             foto: req.file ? '/uploads/' + req.file.filename : null,
+
+            resposta_vendedor: '',
+            status: 'pendente',
             data: new Date().toLocaleString()
-        }]);
+        };
+
+        const { error } = await supabase
+            .from('orcamentos')
+            .insert([novo]);
+
         if (error) throw error;
+
         res.json({ ok: true });
+
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
 
+// =========================
+// 📋 LISTAR
+// =========================
+
 app.get('/orcamentos', async (req, res) => {
-    const { data, error } = await supabase.from('orcamentos').select('*').order('id', { ascending: false });
-    res.json(data || []);
+    const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .order('id', { ascending: false });
+
+    if (error) return res.status(500).json({ error });
+
+    res.json(data);
 });
 
+// =========================
+// 💬 RESPONDER
+// =========================
+
 app.post('/orcamento/:id/resposta', async (req, res) => {
-    const { error } = await supabase.from('orcamentos')
-        .update({ resposta_vendedor: req.body.resposta, status: 'respondido' })
+    const { error } = await supabase
+        .from('orcamentos')
+        .update({
+            resposta_vendedor: req.body.resposta,
+            status: 'respondido'
+        })
         .eq('id', req.params.id);
-    res.json({ ok: !error });
+
+    if (error) return res.status(500).json({ error });
+
+    res.json({ ok: true });
 });
+
+// =========================
+// 📄 PDF (IGUAL AO ORIGINAL + FOTO FUNCIONANDO)
+// =========================
 
 app.get('/orcamento/:id/pdf', async (req, res) => {
     try {
-        const { data: item, error } = await supabase.from('orcamentos').select('*').eq('id', req.params.id).single();
+        const { data: item, error } = await supabase
+            .from('orcamentos')
+            .select('*')
+            .eq('id', req.params.id)
+            .single();
+
         if (error || !item) return res.status(404).send('Nao encontrado');
 
         const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -83,6 +162,7 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
         doc.pipe(res);
 
         const prod = (item.tipo_produto || '').toUpperCase();
+
         let med = '';
         if (item.tipo_produto === 'disco') {
             med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
@@ -94,31 +174,54 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
 
         const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
 
-        doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('ORCAMENTO TECNICO', { align: 'center' });
-        doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data || '-'}`, { align: 'center' }).moveDown();
+        doc.fillColor('#1e40af')
+           .fontSize(20)
+           .font('Helvetica-Bold')
+           .text('ORCAMENTO TECNICO', { align: 'center' });
+
+        doc.fontSize(10)
+           .fillColor('#64748b')
+           .text(`Data: ${item.data || '-'}`, { align: 'center' })
+           .moveDown();
 
         doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
-        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(titulo, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
+
+        doc.fillColor('#0f172a')
+           .font('Helvetica-Bold')
+           .fontSize(12)
+           .text(titulo, 40, doc.y + 7, { align: 'center' })
+           .moveDown(1.5);
 
         const criarSecao = (t, c) => {
             doc.rect(40, doc.y, 515, 18).fill(c);
-            doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text('  ' + t, 40, doc.y + 4).moveDown(0.5);
-            doc.fillColor('#000000').font('Helvetica').fontSize(11).moveDown(0.2);
+            doc.fillColor('#ffffff')
+               .font('Helvetica-Bold')
+               .fontSize(11)
+               .text('  ' + t, 40, doc.y + 4)
+               .moveDown(0.5);
+
+            doc.fillColor('#000000')
+               .font('Helvetica')
+               .fontSize(11)
+               .moveDown(0.2);
         };
 
         criarSecao('DADOS DO CLIENTE', '#1e40af');
-        doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`).moveDown();
+        doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
+           .moveDown();
 
         criarSecao('DETALHES TECNICOS', '#1e40af');
         doc.text(`Maquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
         doc.text(`Fio: ${item.tipo_fio || '-'} | Perfil: ${item.perfil || '-'}`);
-        doc.text(`Quantidade: ${item.quantidade || '-'} | Aplicacao: ${item.aplicacao_final || '-'}`).moveDown();
+        doc.text(`Quantidade: ${item.quantidade || '-'} | Aplicacao: ${item.aplicacao_final || '-'}`)
+           .moveDown();
 
         if (item.resposta_vendedor) {
             criarSecao('RESPOSTA', '#ca8a04');
             doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
         }
 
+        // ✅ FOTO FUNCIONANDO
         if (item.foto) {
             const p = path.resolve(__dirname, item.foto.replace(/^\//, ''));
             if (fs.existsSync(p)) {
@@ -126,11 +229,18 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
                 doc.image(p, { fit: [450, 500], align: 'center' });
             }
         }
+
         doc.end();
+
     } catch (e) {
+        console.log(e);
         res.status(500).send("Erro no PDF");
     }
 });
+
+// =========================
+// 🚀 START
+// =========================
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
