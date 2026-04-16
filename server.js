@@ -145,6 +145,7 @@ app.post('/orcamento/:id/resposta', async (req, res) => {
 
 app.get('/orcamento/:id/pdf', async (req, res) => {
 
+    // 🔥 BUSCAR NO SUPABASE (CORRETO)
     const { data, error } = await supabase
         .from('orcamentos')
         .select('*')
@@ -155,59 +156,112 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
 
     const item = data;
 
-    const doc = new PDFDocument({ margin: 40 });
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     doc.pipe(res);
 
-    doc.fontSize(18).text('SOLICITAÇÃO DE ORÇAMENTO', { align: 'center' });
-    doc.moveDown();
+    const prod = (item.tipo_produto || '').toUpperCase();
 
-    doc.text(`Cliente: ${item.cliente_cargo}`);
-    doc.text(`Empresa: ${item.cnpj}`);
-    doc.text(`Telefone: ${item.telefone}`);
-    doc.text(`Vendedor: ${item.vendedor}`);
-    doc.moveDown();
-
-    doc.text(`Material: ${item.material}`);
-    doc.text(`Aplicação: ${item.aplicacao_final}`);
-    doc.text(`Quantidade: ${item.quantidade}`);
-    doc.text(`Máquina: ${item.nome_maquina}`);
-    doc.text(`Código: ${item.codigo_original}`);
-    doc.moveDown();
+    // 🔥 MEDIDAS CORRETAS
+    let med = '';
 
     if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetro externo: ${item.diametro_externo}`);
-        doc.text(`Diâmetro interno: ${item.diametro_interno}`);
-        doc.text(`Espessura: ${item.espessura_disco}`);
-        doc.text(`Tipo de fio: ${item.tipo_fio}`);
-        doc.text(`Descrição do fio: ${item.tipo_fio_desc}`);
-        doc.text(`Obs: ${item.obs_disco}`);
+        med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
     }
 
     if (item.tipo_produto === 'lamina') {
-        doc.text(`Largura: ${item.largura}`);
-        doc.text(`Comprimento: ${item.comprimento}`);
-        doc.text(`Espessura: ${item.espessura_lamina}`);
-        doc.text(`Obs: ${item.obs_lamina}`);
+        med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
     }
 
     if (item.tipo_produto === 'usinagem') {
-        doc.text(`Medidas: ${item.medidas_usinagem}`);
+        med = item.medidas_usinagem || '';
+    }
+
+    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} ${item.material || ''}`;
+
+    doc.fillColor('#1e40af')
+       .fontSize(20)
+       .font('Helvetica-Bold')
+       .text('ORÇAMENTO TÉCNICO', { align: 'center' });
+
+    doc.fontSize(10)
+       .fillColor('#64748b')
+       .text(`Data: ${item.data || '-'}`, { align: 'center' })
+       .moveDown();
+
+    doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
+
+    doc.fillColor('#0f172a')
+       .font('Helvetica-Bold')
+       .fontSize(12)
+       .text(titulo, 40, doc.y + 7, { align: 'center' })
+       .moveDown(1.5);
+
+    const criarSecao = (t, c) => {
+        doc.rect(40, doc.y, 515, 18).fill(c);
+        doc.fillColor('#ffffff')
+           .font('Helvetica-Bold')
+           .fontSize(11)
+           .text('  ' + t, 40, doc.y + 4)
+           .moveDown(0.5);
+
+        doc.fillColor('#000000')
+           .font('Helvetica')
+           .fontSize(11)
+           .moveDown(0.2);
+    };
+
+    // CLIENTE
+    criarSecao('DADOS DO CLIENTE', '#1e40af');
+    doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
+       .moveDown();
+
+    // TÉCNICO
+    criarSecao('DETALHES TÉCNICOS', '#1e40af');
+    doc.text(`Máquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
+    doc.text(`Quantidade: ${item.quantidade || '-'}`);
+    doc.text(`Aplicação: ${item.aplicacao_final || '-'}`);
+    doc.text(`Fio: ${item.tipo_fio || '-'} ${item.tipo_fio_desc || ''}`)
+       .moveDown();
+
+    // DETALHES DO PRODUTO
+    if (item.tipo_produto === 'disco') {
+        doc.text(`Diâmetro externo: ${item.diametro_externo || '-'}`);
+        doc.text(`Diâmetro interno: ${item.diametro_interno || '-'}`);
+        doc.text(`Espessura: ${item.espessura_disco || '-'}`);
+        doc.text(`Observação: ${item.obs_disco || '-'}`);
+    }
+
+    if (item.tipo_produto === 'lamina') {
+        doc.text(`Largura: ${item.largura || '-'}`);
+        doc.text(`Comprimento: ${item.comprimento || '-'}`);
+        doc.text(`Espessura: ${item.espessura_lamina || '-'}`);
+        doc.text(`Observação: ${item.obs_lamina || '-'}`);
+    }
+
+    if (item.tipo_produto === 'usinagem') {
+        doc.text(`Medidas: ${item.medidas_usinagem || '-'}`);
     }
 
     doc.moveDown();
-    doc.text('Resposta:');
-    doc.text(item.resposta_vendedor || 'Ainda não respondido');
 
-    // 📸 ANEXO
+    // RESPOSTA
+    if (item.resposta_vendedor) {
+        criarSecao('RESPOSTA', '#ca8a04');
+        doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
+    }
+
+    // ANEXO
     if (item.foto) {
         try {
-            const imgPath = path.resolve(__dirname, item.foto.replace('/uploads/', 'uploads/'));
-            if (fs.existsSync(imgPath)) {
+            const p = path.resolve(__dirname, item.foto.replace('/uploads/', 'uploads/'));
+
+            if (fs.existsSync(p)) {
                 doc.addPage();
-                doc.text('Anexo:');
-                doc.moveDown();
-                doc.image(imgPath, { fit: [400, 400], align: 'center' });
+                doc.image(p, {
+                    fit: [450, 500],
+                    align: 'center'
+                });
             }
         } catch (e) {
             console.log('Erro imagem:', e);
@@ -216,7 +270,6 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
 
     doc.end();
 });
-
 // =========================
 // 🚀 START
 // =========================
