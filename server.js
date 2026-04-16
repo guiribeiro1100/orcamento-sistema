@@ -120,33 +120,35 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
     try {
         const b = req.body;
 
-        const novo = {
-            cnpj: b.cnpj || '',
-            vendedor: b.vendedor || '',
-            cliente_cargo: b.cliente_cargo || '',
-            telefone: b.telefone || '',
-            email: b.email || '',
-            tipo_produto: b.tipo_produto || '',
-            nome_maquina: b.nome_maquina || '',
-            codigo_original: b.codigo_original || '',
-            material: b.material === 'outro' ? b.material_outro : b.material,
-            angulo_corte: b.angulo_corte || '',
-            tipo_fio: b.tipo_fio || '',
-            perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
-            quantidade: b.quantidade || '',
-            diametro_externo: b.diametro_externo || '',
-            diametro_interno: b.diametro_interno || '',
-            espessura_disco: b.espessura_disco || '',
-            largura: b.largura || '',
-            comprimento: b.comprimento || '',
-            espessura_lamina: b.espessura_lamina || '',
-            medidas_usinagem: b.medidas_usinagem || '',
-            aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
-            foto: req.file ? '/uploads/' + req.file.filename : null,
-            resposta_vendedor: '',
-            status: 'pendente',
-            data: new Date().toLocaleString()
-        };
+  const novo = {
+    cnpj: b.cnpj || '',
+    vendedor: b.vendedor || '',
+    cliente_cargo: b.cliente_cargo || '',
+    telefone: b.telefone || '',
+    email: b.email || '',
+    tipo_produto: b.tipo_produto || '',
+    nome_maquina: b.nome_maquina || '',
+    codigo_original: b.codigo_original || '',
+    material: b.material === 'outro' ? (b.material_outro || '') : (b.material || ''),
+    angulo_corte: b.angulo_corte || '',
+    tipo_fio: b.tipo_fio || '',
+    perfil: b.perfil_corte_disco === 'outro'
+        ? (b.perfil_outro_disco || '')
+        : (b.perfil_corte_disco || ''),
+    quantidade: b.quantidade || '0',
+    diametro_externo: b.diametro_externo || '',
+    diametro_interno: b.diametro_interno || '',
+    espessura_disco: b.espessura_disco || '',
+    largura: b.largura || '',
+    comprimento: b.comprimento || '',
+    espessura_lamina: b.espessura_lamina || '',
+    medidas_usinagem: b.medidas_usinagem || '',
+    aplicacao_final: b.aplicacao === 'outro' ? (b.aplicacao_outro || '') : (b.aplicacao || ''),
+    foto: req.file ? '/uploads/' + req.file.filename : null,
+    resposta_vendedor: '',
+    status: 'pendente',
+    data: new Date().toLocaleString()
+};
 
         const { data, error } = await supabase
             .from('orcamentos')
