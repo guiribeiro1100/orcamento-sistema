@@ -255,30 +255,30 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
     // 🔥 ANEXO (VERSÃO CERTA)
     // =========================
 
-    if (item.foto) {
-        try {
-            const response = await axios({
-                url: item.foto,
-                method: 'GET',
-                responseType: 'arraybuffer'
-            });
+if (item.foto) {
+    try {
+        const response = await axios({
+            url: item.foto,
+            method: 'GET',
+            responseType: 'arraybuffer',
+            timeout: 10000
+        });
 
-            const img = Buffer.from(response.data, 'binary');
+        const img = Buffer.from(response.data);
 
-            doc.addPage();
-            doc.text('Anexo:');
-            doc.moveDown();
+        doc.addPage();
+        doc.text('Anexo:');
+        doc.moveDown();
 
-            doc.image(img, {
-                fit: [400, 400],
-                align: 'center'
-            });
+        doc.image(img, {
+            fit: [400, 400],
+            align: 'center'
+        });
 
-        } catch (e) {
-            console.log('Erro ao carregar imagem:', e.message);
-        }
+    } catch (e) {
+        console.log('❌ ERRO REAL DA IMAGEM:', e.message);
     }
-
+}
     doc.end();
 });
 // =========================
