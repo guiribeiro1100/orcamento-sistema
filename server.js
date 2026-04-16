@@ -6,13 +6,13 @@ const fs = require('fs');
 const PDFDocument = require('pdfkit');
 const { createClient } = require('@supabase/supabase-client');
 
-// 1. INICIALIZAÇÃO DO APP (O que estava faltando)
+// 1. INICIALIZAÇÃO DO APP
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 2. CONEXÃO SUPABASE
+// 2. CONEXÃO SUPABASE (Verifique se suas chaves estão corretas aqui)
 const supabaseUrl = 'SUA_URL_DO_SUPABASE';
 const supabaseKey = 'SUA_CHAVE_ANON_DO_SUPABASE';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -61,48 +61,53 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
         }]);
         if (error) throw error;
         res.json({ ok: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // Listar Orçamentos
 app.get('/orcamentos', async (req, res) => {
-    const { data, error } = await supabase.from('orcamentos').select('*').order('id', { ascending: false });
-    res.json(data || []);
+    try {
+        const { data, error } = await supabase.from('orcamentos').select('*').order('id', { ascending: false });
+        res.json(data || []);
+    } catch (err) {
+        res.status(500).json([]);
+    }
 });
 
 // Salvar Resposta
 app.post('/orcamento/:id/resposta', async (req, res) => {
-    const { error } = await supabase.from('orcamentos')
-        .update({ resposta_vendedor: req.body.resposta, status: 'respondido' })
-        .eq('id', req.params.id);
-    res.json({ ok: !error });
+    try {
+        const { error } = await supabase.from('orcamentos')
+            .update({ resposta_vendedor: req.body.resposta, status: 'respondido' })
+            .eq('id', req.params.id);
+        res.json({ ok: !error });
+    } catch (err) {
+        res.status(500).json({ ok: false });
+    }
 });
 
-// --- ROTA DO PDF (A QUE VOCÊ ENVIOU, AJUSTADA) ---
+// Rota do PDF
 app.get('/orcamento/:id/pdf', async (req, res) => {
-    const { data: item, error } = await supabase.from('orcamentos').select('*').eq('id', req.params.id).single();
-    if (error || !item) return res.status(404).send('Não encontrado');
+    try {
+        const { data: item, error } = await supabase.from('orcamentos').select('*').eq('id', req.params.id).single();
+        if (error || !item) return res.status(404).send('Não encontrado');
 
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
-    res.setHeader('Content-Type', 'application/pdf');
-    doc.pipe(res);
+        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        res.setHeader('Content-Type', 'application/pdf');
+        doc.pipe(res);
 
-    const prod = (item.tipo_produto || '').toUpperCase();
-    let med = '';
-    if (item.tipo_produto === 'disco') {
-        med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
-    } else if (item.tipo_produto === 'lamina') {
-        med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
-    } else {
-        med = item.medidas_usinagem || '';
-    }
+        const prod = (item.tipo_produto || '').toUpperCase();
+        let med = '';
+        if (item.tipo_produto === 'disco') {
+            med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
+        } else if (item.tipo_produto === 'lamina') {
+            med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
+        } else {
+            med = item.medidas_usinagem || '';
+        }
 
-    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
+        const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
 
-    doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('ORÇAMENTO TÉCNICO', { align: 'center' });
-    doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data || '-'}`, { align: 'center' }).moveDown();
-
-    doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(titulo, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
-
-    const criarSecao = (t
+        doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('ORÇAMENTO TÉ
