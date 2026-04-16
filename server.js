@@ -13,13 +13,24 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 🔥 SERVIR HTML
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'form.html'));
+});
+
+app.get('/painel', (req, res) => {
+    res.sendFile(path.join(__dirname, 'painel.html'));
+});
+
 // =========================
 // 🔥 SUPABASE
 // =========================
 
 const supabase = createClient(
     'https://vhrnuejlubfxmlownydm.supabase.co',
-    'SUA_KEY_AQUI'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocm51ZWpsdWJmeG1sb3dueWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNDk2MDgsImV4cCI6MjA5MTgyNTYwOH0.JFEYbnwD3IkwHT3IB2jM-ZPLa1PV-lNJBPQpgRvjuLI' // ⚠️ coloca tua key aqui
 );
 
 // =========================
@@ -46,7 +57,6 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
 
         let fotoUrl = null;
 
-        // 🔥 UPLOAD PARA SUPABASE
         if (req.file) {
             const fileName = Date.now() + '-' + req.file.originalname;
 
@@ -64,7 +74,6 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
                 fotoUrl = data.publicUrl;
             }
 
-            // remove arquivo local
             fs.unlinkSync(req.file.path);
         }
 
@@ -156,7 +165,7 @@ app.post('/orcamento/:id/resposta', async (req, res) => {
 });
 
 // =========================
-// 📄 PDF (COM IMAGEM FIXA)
+// 📄 PDF
 // =========================
 
 app.get('/orcamento/:id/pdf', async (req, res) => {
@@ -207,7 +216,7 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
         doc.text(item.resposta_vendedor);
     }
 
-    // 🔥 IMAGEM VIA URL (CORRETO)
+    // 🔥 IMAGEM FUNCIONANDO (SUPABASE)
     if (item.foto) {
         try {
             const response = await axios.get(item.foto, { responseType: 'arraybuffer' });
