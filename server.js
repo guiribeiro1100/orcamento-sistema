@@ -219,7 +219,11 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
     // 🔥 IMAGEM FUNCIONANDO (SUPABASE)
     if (item.foto) {
         try {
-            const response = await axios.get(item.foto, { responseType: 'arraybuffer' });
+            const response = await axios({
+    url: item.foto,
+    method: 'GET',
+    responseType: 'arraybuffer'
+});
             const imgBuffer = Buffer.from(response.data, 'binary');
 
             doc.addPage();
