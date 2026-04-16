@@ -1,6 +1,6 @@
 app.get('/orcamento/:id/pdf', async (req, res) => {
 
-    // 🔥 BUSCAR NO SUPABASE (CORRETO)
+    // 1. BUSCAR NO SUPABASE
     const { data, error } = await supabase
         .from('orcamentos')
         .select('*')
@@ -17,23 +17,21 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
 
     const prod = (item.tipo_produto || '').toUpperCase();
 
-    // 🔥 MEDIDAS CORRETAS
+    // 2. LÓGICA DE MEDIDAS
     let med = '';
-
     if (item.tipo_produto === 'disco') {
         med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
-    }
-
-    if (item.tipo_produto === 'lamina') {
+    } else if (item.tipo_produto === 'lamina') {
         med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
-    }
-
-    if (item.tipo_produto === 'usinagem') {
+    } else if (item.tipo_produto === 'usinagem') {
         med = item.medidas_usinagem || '';
     }
 
-    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} ${item.material || ''}`;
+    // 3. TÍTULO PADRONIZADO (Corrigido: Incluindo Perfil)
+    // Ex: DISCO D132x50x11mm Fio Duplo Perfil dente_serra M3
+    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
 
+    // CABEÇALHO
     doc.fillColor('#1e40af')
        .fontSize(20)
        .font('Helvetica-Bold')
@@ -44,6 +42,7 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
        .text(`Data: ${item.data || '-'}`, { align: 'center' })
        .moveDown();
 
+    // TARJA DO TÍTULO TÉCNICO
     doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
 
     doc.fillColor('#0f172a')
@@ -66,53 +65,50 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
            .moveDown(0.2);
     };
 
-    // CLIENTE
+    // SEÇÃO: CLIENTE
     criarSecao('DADOS DO CLIENTE', '#1e40af');
     doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
        .moveDown();
 
-    // TÉCNICO
+    // SEÇÃO: TÉCNICO
     criarSecao('DETALHES TÉCNICOS', '#1e40af');
     doc.text(`Máquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
-    doc.text(`Quantidade: ${item.quantidade || '-'}`);
-    doc.text(`Aplicação: ${item.aplicacao_final || '-'}`);
-    doc.text(`Fio: ${item.tipo_fio || '-'} ${item.tipo_fio_desc || ''}`)
+    doc.text(`Quantidade: ${item.quantidade || '-'} | Aplicação: ${item.aplicacao_final || '-'}`);
+    doc.text(`Fio: ${item.tipo_fio || '-'} | Perfil: ${item.perfil || '-'}`)
        .moveDown();
 
-    // DETALHES DO PRODUTO
+    // DETALHES ESPECÍFICOS POR PRODUTO
     if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetro externo: ${item.diametro_externo || '-'}`);
-        doc.text(`Diâmetro interno: ${item.diametro_interno || '-'}`);
+        doc.text(`Diâmetro Externo: ${item.diametro_externo || '-'}`);
+        doc.text(`Diâmetro Interno: ${item.diametro_interno || '-'}`);
         doc.text(`Espessura: ${item.espessura_disco || '-'}`);
-        doc.text(`Observação: ${item.obs_disco || '-'}`);
-    }
-
-    if (item.tipo_produto === 'lamina') {
+        if(item.obs_disco) doc.text(`Observação: ${item.obs_disco}`);
+    } else if (item.tipo_produto === 'lamina') {
         doc.text(`Largura: ${item.largura || '-'}`);
         doc.text(`Comprimento: ${item.comprimento || '-'}`);
         doc.text(`Espessura: ${item.espessura_lamina || '-'}`);
-        doc.text(`Observação: ${item.obs_lamina || '-'}`);
-    }
-
-    if (item.tipo_produto === 'usinagem') {
+        if(item.obs_lamina) doc.text(`Observação: ${item.obs_lamina}`);
+    } else if (item.tipo_produto === 'usinagem') {
         doc.text(`Medidas: ${item.medidas_usinagem || '-'}`);
     }
 
     doc.moveDown();
 
-    // RESPOSTA
+    // SEÇÃO: RESPOSTA DO VENDEDOR
     if (item.resposta_vendedor) {
-        criarSecao('RESPOSTA', '#ca8a04');
+        criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
         doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
     }
 
-    // ANEXO
+    // ANEXO DE FOTO
     if (item.foto) {
         try {
-            const p = path.resolve(__dirname, item.foto.replace('/uploads/', 'uploads/'));
+            // Ajuste para ler a pasta uploads corretamente
+            const p = path.resolve(__dirname, item.foto.replace(/^\//, '')); 
 
             if (fs.existsSync(p)) {
                 doc.addPage();
+                doc.fillColor('#1e40af').fontSize(14).font('Helvetica-Bold').text('FOTO DE REFERÊNCIA', { align: 'center' }).moveDown();
                 doc.image(p, {
                     fit: [450, 500],
                     align: 'center'
