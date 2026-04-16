@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
-const { createClient } = require('@supabase/supabase-js'); // ✅ CORRETO
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(cors());
@@ -58,39 +58,28 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
         const b = req.body;
 
         const novo = {
-            id: Date.now(),
-
             cnpj: b.cnpj || '',
             vendedor: b.vendedor || '',
             cliente_cargo: b.cliente_cargo || '',
             telefone: b.telefone || '',
             email: b.email || '',
-
             tipo_produto: b.tipo_produto || '',
             nome_maquina: b.nome_maquina || '',
             codigo_original: b.codigo_original || '',
-
             material: b.material === 'outro' ? b.material_outro : b.material,
             angulo_corte: b.angulo_corte || b.angulo_corte_lamina || '',
             tipo_fio: b.tipo_fio || '',
             perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
-
             quantidade: b.quantidade || '',
-
             diametro_externo: b.diametro_externo || '',
             diametro_interno: b.diametro_interno || '',
             espessura_disco: b.espessura_disco || '',
-
             largura: b.largura || '',
             comprimento: b.comprimento || '',
             espessura_lamina: b.espessura_lamina || '',
-
             medidas_usinagem: b.medidas_usinagem || '',
-
             aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
-
             foto: req.file ? '/uploads/' + req.file.filename : null,
-
             resposta_vendedor: '',
             status: 'pendente',
             data: new Date().toLocaleString()
@@ -101,7 +90,6 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
             .insert([novo]);
 
         if (error) throw error;
-
         res.json({ ok: true });
 
     } catch (err) {
@@ -121,7 +109,6 @@ app.get('/orcamentos', async (req, res) => {
         .order('id', { ascending: false });
 
     if (error) return res.status(500).json({ error });
-
     res.json(data);
 });
 
@@ -139,12 +126,11 @@ app.post('/orcamento/:id/resposta', async (req, res) => {
         .eq('id', req.params.id);
 
     if (error) return res.status(500).json({ error });
-
     res.json({ ok: true });
 });
 
 // =========================
-// 📄 PDF (IGUAL AO ORIGINAL + FOTO FUNCIONANDO)
+// 📄 PDF (CORRIGIDO)
 // =========================
 
 app.get('/orcamento/:id/pdf', async (req, res) => {
@@ -221,7 +207,6 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
             doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
         }
 
-        // ✅ FOTO FUNCIONANDO
         if (item.foto) {
             const p = path.resolve(__dirname, item.foto.replace(/^\//, ''));
             if (fs.existsSync(p)) {
