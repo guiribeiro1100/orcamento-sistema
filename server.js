@@ -180,66 +180,107 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
 
     const item = data;
 
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const doc = new PDFDocument({ margin: 50 });
+
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=orcamento-${item.id}.pdf`);
+
     doc.pipe(res);
 
-    const prod = (item.tipo_produto || '').toUpperCase();
-
-    let med = '';
-    if (item.tipo_produto === 'disco') {
-        med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
-    }
-    if (item.tipo_produto === 'lamina') {
-        med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
-    }
-    if (item.tipo_produto === 'usinagem') {
-        med = item.medidas_usinagem || '';
-    }
-
-    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} ${item.material || ''}`;
+    // =========================
+    // CABEÇALHO
+    // =========================
 
     doc.fontSize(18).text('ORÇAMENTO TÉCNICO', { align: 'center' });
     doc.moveDown();
 
-    doc.text(`Cliente: ${item.cliente_cargo}`);
-    doc.text(`Telefone: ${item.telefone}`);
+    doc.fontSize(12);
+    doc.text(`Cliente: ${item.cliente_cargo || '-'}`);
+    doc.text(`Telefone: ${item.telefone || '-'}`);
+    doc.text(`Vendedor: ${item.vendedor || '-'}`);
     doc.moveDown();
 
-    doc.text(`Material: ${item.material}`);
-    doc.text(`Aplicação: ${item.aplicacao_final}`);
-    doc.text(`Quantidade: ${item.quantidade}`);
+    // =========================
+    // DADOS
+    // =========================
+
+    doc.text(`Material: ${item.material || '-'}`);
+    doc.text(`Aplicação: ${item.aplicacao_final || '-'}`);
+    doc.text(`Quantidade: ${item.quantidade || '-'}`);
+    doc.text(`Máquina: ${item.nome_maquina || '-'}`);
     doc.moveDown();
 
-    if (item.resposta_vendedor) {
-        doc.text('Resposta:');
-        doc.text(item.resposta_vendedor);
+    // =========================
+    // DISCO
+    // =========================
+
+    if (item.tipo_produto === 'disco') {
+        doc.text(`Diâmetro externo: ${item.diametro_externo || '-'}`);
+        doc.text(`Diâmetro interno: ${item.diametro_interno || '-'}`);
+        doc.text(`Espessura: ${item.espessura_disco || '-'}`);
+        doc.text(`Tipo de fio: ${item.tipo_fio || '-'}`);
+        doc.text(`Descrição do fio: ${item.tipo_fio_desc || '-'}`);
+        doc.text(`Observação: ${item.obs_disco || '-'}`);
     }
 
-    // 🔥 IMAGEM FUNCIONANDO (SUPABASE)
+    // =========================
+    // LÂMINA
+    // =========================
+
+    if (item.tipo_produto === 'lamina') {
+        doc.text(`Largura: ${item.largura || '-'}`);
+        doc.text(`Comprimento: ${item.comprimento || '-'}`);
+        doc.text(`Espessura: ${item.espessura_lamina || '-'}`);
+        doc.text(`Observação: ${item.obs_lamina || '-'}`);
+    }
+
+    // =========================
+    // USINAGEM
+    // =========================
+
+    if (item.tipo_produto === 'usinagem') {
+        doc.text(`Medidas: ${item.medidas_usinagem || '-'}`);
+    }
+
+    doc.moveDown();
+
+    // =========================
+    // RESPOSTA
+    // =========================
+
+    doc.text('Resposta:');
+    doc.text(item.resposta_vendedor || 'Ainda não respondido');
+
+    // =========================
+    // 🔥 ANEXO (VERSÃO CERTA)
+    // =========================
+
     if (item.foto) {
         try {
             const response = await axios({
-    url: item.foto,
-    method: 'GET',
-    responseType: 'arraybuffer'
-});
-            const imgBuffer = Buffer.from(response.data, 'binary');
+                url: item.foto,
+                method: 'GET',
+                responseType: 'arraybuffer'
+            });
+
+            const img = Buffer.from(response.data, 'binary');
 
             doc.addPage();
-            doc.image(imgBuffer, {
+            doc.text('Anexo:');
+            doc.moveDown();
+
+            doc.image(img, {
                 fit: [400, 400],
                 align: 'center'
             });
 
         } catch (e) {
-            console.log('Erro imagem:', e);
+            console.log('Erro ao carregar imagem:', e.message);
         }
     }
 
     doc.end();
 });
-
 // =========================
 // 🚀 START
 // =========================
