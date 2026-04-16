@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
+const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -18,18 +19,15 @@ app.use(express.urlencoded({ extended: true }));
 
 const supabase = createClient(
     'https://vhrnuejlubfxmlownydm.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocm51ZWpsdWJmeG1sb3dueWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNDk2MDgsImV4cCI6MjA5MTgyNTYwOH0.JFEYbnwD3IkwHT3IB2jM-ZPLa1PV-lNJBPQpgRvjuLI'
+    'SUA_KEY_AQUI'
 );
 
 // =========================
-// 📁 UPLOAD
+// 📁 UPLOAD TEMP (local)
 // =========================
 
 const uploadPath = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
-
-app.use('/uploads', express.static(uploadPath));
-app.use(express.static(__dirname));
 
 const upload = multer({
     storage: multer.diskStorage({
@@ -45,6 +43,30 @@ const upload = multer({
 app.post('/orcamento', upload.single('foto'), async (req, res) => {
     try {
         const b = req.body;
+
+        let fotoUrl = null;
+
+        // 🔥 UPLOAD PARA SUPABASE
+        if (req.file) {
+            const fileName = Date.now() + '-' + req.file.originalname;
+
+            const { error: uploadError } = await supabase.storage
+                .from('orcamentos')
+                .upload(fileName, fs.readFileSync(req.file.path), {
+                    contentType: req.file.mimetype
+                });
+
+            if (!uploadError) {
+                const { data } = supabase.storage
+                    .from('orcamentos')
+                    .getPublicUrl(fileName);
+
+                fotoUrl = data.publicUrl;
+            }
+
+            // remove arquivo local
+            fs.unlinkSync(req.file.path);
+        }
 
         const novo = {
             id: Date.now(),
@@ -64,7 +86,6 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
 
             quantidade: b.quantidade || '',
 
-            // DISCO
             diametro_externo: b.diametro_externo || '',
             diametro_interno: b.diametro_interno || '',
             espessura_disco: b.espessura_disco || '',
@@ -72,16 +93,14 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
             tipo_fio_desc: b.tipo_fio_desc || '',
             obs_disco: b.obs_disco || '',
 
-            // LAMINA
             largura: b.largura || '',
             comprimento: b.comprimento || '',
             espessura_lamina: b.espessura_lamina || '',
             obs_lamina: b.obs_lamina || '',
 
-            // USINAGEM
             medidas_usinagem: b.medidas_usinagem || '',
 
-            foto: req.file ? '/uploads/' + req.file.filename : null,
+            foto: fotoUrl,
 
             resposta_vendedor: '',
             status: 'pendente',
@@ -92,10 +111,7 @@ app.post('/orcamento', upload.single('foto'), async (req, res) => {
             .from('orcamentos')
             .insert([novo]);
 
-        if (error) {
-            console.error(error);
-            return res.status(500).json({ error: 'Erro ao salvar' });
-        }
+        if (error) return res.status(500).json({ error });
 
         res.json({ ok: true });
 
@@ -140,7 +156,7 @@ app.post('/orcamento/:id/resposta', async (req, res) => {
 });
 
 // =========================
-// 📄 PDF
+// 📄 PDF (COM IMAGEM FIXA)
 // =========================
 
 app.get('/orcamento/:id/pdf', async (req, res) => {
@@ -162,111 +178,47 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
     const prod = (item.tipo_produto || '').toUpperCase();
 
     let med = '';
-
     if (item.tipo_produto === 'disco') {
         med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
     }
-
     if (item.tipo_produto === 'lamina') {
         med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
     }
-
     if (item.tipo_produto === 'usinagem') {
         med = item.medidas_usinagem || '';
     }
 
-    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
+    const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} ${item.material || ''}`;
 
-    doc.fillColor('#1e40af')
-        .fontSize(20)
-        .font('Helvetica-Bold')
-        .text('ORÇAMENTO TÉCNICO', { align: 'center' });
-
-    doc.fontSize(10)
-        .fillColor('#64748b')
-        .text(`Data: ${item.data || '-'}`, { align: 'center' })
-        .moveDown();
-
-    doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
-
-    doc.fillColor('#0f172a')
-        .font('Helvetica-Bold')
-        .fontSize(12)
-        .text(titulo, 40, doc.y + 7, { align: 'center' })
-        .moveDown(1.5);
-
-    const criarSecao = (t, c) => {
-        doc.rect(40, doc.y, 515, 18).fill(c);
-        doc.fillColor('#ffffff')
-            .font('Helvetica-Bold')
-            .fontSize(11)
-            .text('  ' + t, 40, doc.y + 4)
-            .moveDown(0.5);
-
-        doc.fillColor('#000000')
-            .font('Helvetica')
-            .fontSize(11)
-            .moveDown(0.2);
-    };
-
-    // CLIENTE
-    criarSecao('DADOS DO CLIENTE', '#1e40af');
-    doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
-        .moveDown();
-
-    // TÉCNICO
-    criarSecao('DETALHES TÉCNICOS', '#1e40af');
-    doc.text(`Máquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
-    doc.text(`Quantidade: ${item.quantidade || '-'}`);
-    doc.text(`Aplicação: ${item.aplicacao_final || '-'}`);
-    doc.text(`Fio: ${item.tipo_fio || '-'} ${item.tipo_fio_desc || ''}`);
-    doc.text(`Perfil: ${item.perfil || '-'}`) // 🔥 AGORA APARECE
-        .moveDown();
-
-    // DETALHES DO PRODUTO
-    if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetro externo: ${item.diametro_externo || '-'}`);
-        doc.text(`Diâmetro interno: ${item.diametro_interno || '-'}`);
-        doc.text(`Espessura: ${item.espessura_disco || '-'}`);
-        doc.text(`Observação: ${item.obs_disco || '-'}`);
-    }
-
-    if (item.tipo_produto === 'lamina') {
-        doc.text(`Largura: ${item.largura || '-'}`);
-        doc.text(`Comprimento: ${item.comprimento || '-'}`);
-        doc.text(`Espessura: ${item.espessura_lamina || '-'}`);
-        doc.text(`Observação: ${item.obs_lamina || '-'}`);
-    }
-
-    if (item.tipo_produto === 'usinagem') {
-        doc.text(`Medidas: ${item.medidas_usinagem || '-'}`);
-    }
-
+    doc.fontSize(18).text('ORÇAMENTO TÉCNICO', { align: 'center' });
     doc.moveDown();
 
-    // RESPOSTA
+    doc.text(`Cliente: ${item.cliente_cargo}`);
+    doc.text(`Telefone: ${item.telefone}`);
+    doc.moveDown();
+
+    doc.text(`Material: ${item.material}`);
+    doc.text(`Aplicação: ${item.aplicacao_final}`);
+    doc.text(`Quantidade: ${item.quantidade}`);
+    doc.moveDown();
+
     if (item.resposta_vendedor) {
-        criarSecao('RESPOSTA', '#ca8a04');
-        doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
+        doc.text('Resposta:');
+        doc.text(item.resposta_vendedor);
     }
 
-    // 🔥 FOTO CORRIGIDA
+    // 🔥 IMAGEM VIA URL (CORRETO)
     if (item.foto) {
         try {
-            const caminho = path.resolve(__dirname, '.' + item.foto);
+            const response = await axios.get(item.foto, { responseType: 'arraybuffer' });
+            const imgBuffer = Buffer.from(response.data, 'binary');
 
-            if (fs.existsSync(caminho)) {
-                doc.addPage();
-                doc.text('Anexo:');
-                doc.moveDown();
+            doc.addPage();
+            doc.image(imgBuffer, {
+                fit: [400, 400],
+                align: 'center'
+            });
 
-                doc.image(caminho, {
-                    fit: [450, 500],
-                    align: 'center'
-                });
-            } else {
-                console.log('Imagem não encontrada:', caminho);
-            }
         } catch (e) {
             console.log('Erro imagem:', e);
         }
@@ -274,6 +226,7 @@ app.get('/orcamento/:id/pdf', async (req, res) => {
 
     doc.end();
 });
+
 // =========================
 // 🚀 START
 // =========================
