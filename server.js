@@ -1,123 +1,108 @@
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
+const { createClient } = require('@supabase/supabase-client');
+
+// 1. INICIALIZAÇÃO DO APP (O que estava faltando)
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 2. CONEXÃO SUPABASE
+const supabaseUrl = 'SUA_URL_DO_SUPABASE';
+const supabaseKey = 'SUA_CHAVE_ANON_DO_SUPABASE';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// 3. CONFIGURAÇÃO DE ARQUIVOS
+const uploadPath = path.resolve(__dirname, 'uploads');
+if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+app.use('/uploads', express.static(uploadPath));
+app.use(express.static(__dirname));
+
+const upload = multer({ storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadPath),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+})});
+
+// --- ROTAS ---
+
+// Salvar Orçamento
+app.post('/orcamento', upload.single('foto'), async (req, res) => {
+    try {
+        const b = req.body;
+        const { data, error } = await supabase.from('orcamentos').insert([{
+            cnpj: b.cnpj,
+            vendedor: b.vendedor,
+            cliente_cargo: b.cliente_cargo,
+            telefone: b.telefone,
+            email: b.email,
+            tipo_produto: b.tipo_produto,
+            nome_maquina: b.nome_maquina,
+            codigo_original: b.codigo_original,
+            material: b.material === 'outro' ? b.material_outro : b.material,
+            angulo_corte: b.angulo_corte || b.angulo_corte_lamina,
+            tipo_fio: b.tipo_fio,
+            perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
+            quantidade: b.quantidade,
+            diametro_externo: b.diametro_externo,
+            diametro_interno: b.diametro_interno,
+            espessura_disco: b.espessura_disco,
+            largura: b.largura,
+            comprimento: b.comprimento,
+            espessura_lamina: b.espessura_lamina,
+            medidas_usinagem: b.medidas_usinagem,
+            aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
+            foto: req.file ? '/uploads/' + req.file.filename : null,
+            data: new Date().toLocaleString()
+        }]);
+        if (error) throw error;
+        res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Listar Orçamentos
+app.get('/orcamentos', async (req, res) => {
+    const { data, error } = await supabase.from('orcamentos').select('*').order('id', { ascending: false });
+    res.json(data || []);
+});
+
+// Salvar Resposta
+app.post('/orcamento/:id/resposta', async (req, res) => {
+    const { error } = await supabase.from('orcamentos')
+        .update({ resposta_vendedor: req.body.resposta, status: 'respondido' })
+        .eq('id', req.params.id);
+    res.json({ ok: !error });
+});
+
+// --- ROTA DO PDF (A QUE VOCÊ ENVIOU, AJUSTADA) ---
 app.get('/orcamento/:id/pdf', async (req, res) => {
-
-    // 1. BUSCAR NO SUPABASE
-    const { data, error } = await supabase
-        .from('orcamentos')
-        .select('*')
-        .eq('id', req.params.id)
-        .single();
-
-    if (error || !data) return res.status(404).send('Não encontrado');
-
-    const item = data;
+    const { data: item, error } = await supabase.from('orcamentos').select('*').eq('id', req.params.id).single();
+    if (error || !item) return res.status(404).send('Não encontrado');
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     doc.pipe(res);
 
     const prod = (item.tipo_produto || '').toUpperCase();
-
-    // 2. LÓGICA DE MEDIDAS
     let med = '';
     if (item.tipo_produto === 'disco') {
         med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
     } else if (item.tipo_produto === 'lamina') {
         med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
-    } else if (item.tipo_produto === 'usinagem') {
+    } else {
         med = item.medidas_usinagem || '';
     }
 
-    // 3. TÍTULO PADRONIZADO (Corrigido: Incluindo Perfil)
-    // Ex: DISCO D132x50x11mm Fio Duplo Perfil dente_serra M3
     const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
 
-    // CABEÇALHO
-    doc.fillColor('#1e40af')
-       .fontSize(20)
-       .font('Helvetica-Bold')
-       .text('ORÇAMENTO TÉCNICO', { align: 'center' });
+    doc.fillColor('#1e40af').fontSize(20).font('Helvetica-Bold').text('ORÇAMENTO TÉCNICO', { align: 'center' });
+    doc.fontSize(10).fillColor('#64748b').text(`Data: ${item.data || '-'}`, { align: 'center' }).moveDown();
 
-    doc.fontSize(10)
-       .fillColor('#64748b')
-       .text(`Data: ${item.data || '-'}`, { align: 'center' })
-       .moveDown();
-
-    // TARJA DO TÍTULO TÉCNICO
     doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12).text(titulo, 40, doc.y + 7, { align: 'center' }).moveDown(1.5);
 
-    doc.fillColor('#0f172a')
-       .font('Helvetica-Bold')
-       .fontSize(12)
-       .text(titulo, 40, doc.y + 7, { align: 'center' })
-       .moveDown(1.5);
-
-    const criarSecao = (t, c) => {
-        doc.rect(40, doc.y, 515, 18).fill(c);
-        doc.fillColor('#ffffff')
-           .font('Helvetica-Bold')
-           .fontSize(11)
-           .text('  ' + t, 40, doc.y + 4)
-           .moveDown(0.5);
-
-        doc.fillColor('#000000')
-           .font('Helvetica')
-           .fontSize(11)
-           .moveDown(0.2);
-    };
-
-    // SEÇÃO: CLIENTE
-    criarSecao('DADOS DO CLIENTE', '#1e40af');
-    doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
-       .moveDown();
-
-    // SEÇÃO: TÉCNICO
-    criarSecao('DETALHES TÉCNICOS', '#1e40af');
-    doc.text(`Máquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
-    doc.text(`Quantidade: ${item.quantidade || '-'} | Aplicação: ${item.aplicacao_final || '-'}`);
-    doc.text(`Fio: ${item.tipo_fio || '-'} | Perfil: ${item.perfil || '-'}`)
-       .moveDown();
-
-    // DETALHES ESPECÍFICOS POR PRODUTO
-    if (item.tipo_produto === 'disco') {
-        doc.text(`Diâmetro Externo: ${item.diametro_externo || '-'}`);
-        doc.text(`Diâmetro Interno: ${item.diametro_interno || '-'}`);
-        doc.text(`Espessura: ${item.espessura_disco || '-'}`);
-        if(item.obs_disco) doc.text(`Observação: ${item.obs_disco}`);
-    } else if (item.tipo_produto === 'lamina') {
-        doc.text(`Largura: ${item.largura || '-'}`);
-        doc.text(`Comprimento: ${item.comprimento || '-'}`);
-        doc.text(`Espessura: ${item.espessura_lamina || '-'}`);
-        if(item.obs_lamina) doc.text(`Observação: ${item.obs_lamina}`);
-    } else if (item.tipo_produto === 'usinagem') {
-        doc.text(`Medidas: ${item.medidas_usinagem || '-'}`);
-    }
-
-    doc.moveDown();
-
-    // SEÇÃO: RESPOSTA DO VENDEDOR
-    if (item.resposta_vendedor) {
-        criarSecao('RETORNO DO ORÇAMENTO', '#ca8a04');
-        doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
-    }
-
-    // ANEXO DE FOTO
-    if (item.foto) {
-        try {
-            // Ajuste para ler a pasta uploads corretamente
-            const p = path.resolve(__dirname, item.foto.replace(/^\//, '')); 
-
-            if (fs.existsSync(p)) {
-                doc.addPage();
-                doc.fillColor('#1e40af').fontSize(14).font('Helvetica-Bold').text('FOTO DE REFERÊNCIA', { align: 'center' }).moveDown();
-                doc.image(p, {
-                    fit: [450, 500],
-                    align: 'center'
-                });
-            }
-        } catch (e) {
-            console.log('Erro imagem:', e);
-        }
-    }
-
-    doc.end();
-});
+    const criarSecao = (t
