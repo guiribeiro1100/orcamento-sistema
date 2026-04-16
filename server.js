@@ -116,113 +116,55 @@ app.get('/orcamentos', async (req, res) => {
 // 💬 RESPONDER
 // =========================
 
-app.post('/orcamento/:id/resposta', async (req, res) => {
-    const { error } = await supabase
-        .from('orcamentos')
-        .update({
-            resposta_vendedor: req.body.resposta,
-            status: 'respondido'
-        })
-        .eq('id', req.params.id);
-
-    if (error) return res.status(500).json({ error });
-    res.json({ ok: true });
-});
-
-// =========================
-// 📄 PDF (CORRIGIDO)
-// =========================
-
-app.get('/orcamento/:id/pdf', async (req, res) => {
+app.post('/orcamento', upload.single('foto'), async (req, res) => {
     try {
-        const { data: item, error } = await supabase
-            .from('orcamentos')
-            .select('*')
-            .eq('id', req.params.id)
-            .single();
+        const b = req.body;
 
-        if (error || !item) return res.status(404).send('Nao encontrado');
-
-        const doc = new PDFDocument({ margin: 40, size: 'A4' });
-        res.setHeader('Content-Type', 'application/pdf');
-        doc.pipe(res);
-
-        const prod = (item.tipo_produto || '').toUpperCase();
-
-        let med = '';
-        if (item.tipo_produto === 'disco') {
-            med = `D${item.diametro_externo || ''}x${item.diametro_interno || ''}x${item.espessura_disco || ''}mm`;
-        } else if (item.tipo_produto === 'lamina') {
-            med = `${item.largura || ''}x${item.comprimento || ''}x${item.espessura_lamina || ''}mm`;
-        } else {
-            med = item.medidas_usinagem || '';
-        }
-
-        const titulo = `${prod} ${med} Fio ${item.tipo_fio || ''} Perfil ${item.perfil || ''} ${item.material || ''}`;
-
-        doc.fillColor('#1e40af')
-           .fontSize(20)
-           .font('Helvetica-Bold')
-           .text('ORCAMENTO TECNICO', { align: 'center' });
-
-        doc.fontSize(10)
-           .fillColor('#64748b')
-           .text(`Data: ${item.data || '-'}`, { align: 'center' })
-           .moveDown();
-
-        doc.rect(40, doc.y, 515, 25).fill('#f8fafc');
-
-        doc.fillColor('#0f172a')
-           .font('Helvetica-Bold')
-           .fontSize(12)
-           .text(titulo, 40, doc.y + 7, { align: 'center' })
-           .moveDown(1.5);
-
-        const criarSecao = (t, c) => {
-            doc.rect(40, doc.y, 515, 18).fill(c);
-            doc.fillColor('#ffffff')
-               .font('Helvetica-Bold')
-               .fontSize(11)
-               .text('  ' + t, 40, doc.y + 4)
-               .moveDown(0.5);
-
-            doc.fillColor('#000000')
-               .font('Helvetica')
-               .fontSize(11)
-               .moveDown(0.2);
+        const novo = {
+            cnpj: b.cnpj || '',
+            vendedor: b.vendedor || '',
+            cliente_cargo: b.cliente_cargo || '',
+            telefone: b.telefone || '',
+            email: b.email || '',
+            tipo_produto: b.tipo_produto || '',
+            nome_maquina: b.nome_maquina || '',
+            codigo_original: b.codigo_original || '',
+            material: b.material === 'outro' ? b.material_outro : b.material,
+            angulo_corte: b.angulo_corte || '',
+            tipo_fio: b.tipo_fio || '',
+            perfil: b.perfil_corte_disco === 'outro' ? b.perfil_outro_disco : b.perfil_corte_disco,
+            quantidade: b.quantidade || '',
+            diametro_externo: b.diametro_externo || '',
+            diametro_interno: b.diametro_interno || '',
+            espessura_disco: b.espessura_disco || '',
+            largura: b.largura || '',
+            comprimento: b.comprimento || '',
+            espessura_lamina: b.espessura_lamina || '',
+            medidas_usinagem: b.medidas_usinagem || '',
+            aplicacao_final: b.aplicacao === 'outro' ? b.aplicacao_outro : b.aplicacao,
+            foto: req.file ? '/uploads/' + req.file.filename : null,
+            resposta_vendedor: '',
+            status: 'pendente',
+            data: new Date().toLocaleString()
         };
 
-        criarSecao('DADOS DO CLIENTE', '#1e40af');
-        doc.text(`CNPJ: ${item.cnpj || '-'} | Vendedor: ${item.vendedor || '-'} | WhatsApp: ${item.telefone || '-'}`)
-           .moveDown();
+        const { data, error } = await supabase
+            .from('orcamentos')
+            .insert([novo])
+            .select();
 
-        criarSecao('DETALHES TECNICOS', '#1e40af');
-        doc.text(`Maquina: ${item.nome_maquina || '-'} | Material: ${item.material || '-'}`);
-        doc.text(`Fio: ${item.tipo_fio || '-'} | Perfil: ${item.perfil || '-'}`);
-        doc.text(`Quantidade: ${item.quantidade || '-'} | Aplicacao: ${item.aplicacao_final || '-'}`)
-           .moveDown();
-
-        if (item.resposta_vendedor) {
-            criarSecao('RESPOSTA', '#ca8a04');
-            doc.text(item.resposta_vendedor, { align: 'justify' }).moveDown();
+        if (error) {
+            console.error('ERRO SUPABASE:', error);
+            return res.status(500).json({ error: error.message });
         }
 
-        if (item.foto) {
-            const p = path.resolve(__dirname, item.foto.replace(/^\//, ''));
-            if (fs.existsSync(p)) {
-                doc.addPage();
-                doc.image(p, { fit: [450, 500], align: 'center' });
-            }
-        }
+        res.json({ ok: true, data });
 
-        doc.end();
-
-    } catch (e) {
-        console.log(e);
-        res.status(500).send("Erro no PDF");
+    } catch (err) {
+        console.error('ERRO GERAL:', err);
+        res.status(500).json({ error: err.message });
     }
 });
-
 // =========================
 // 🚀 START
 // =========================
